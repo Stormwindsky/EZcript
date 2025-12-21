@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EZHTML</title>
+
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f4f4f9;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #4a6cf7;
+    color: white;
+}
+
+button.secondary {
+    background: #555;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+    height: 75vh;
+    margin-top: 10px;
+}
+
+#blocklyDiv {
+    flex: 2;
+    border: 1px solid #ccc;
+    background: white;
+}
+
+textarea {
+    flex: 1;
+    background: #1e1e1e;
+    color: #dcdcdc;
+    padding: 10px;
+    font-family: monospace;
+    border-radius: 6px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background: white;
+    max-width: 600px;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h2>EZHTML</h2>
+    <div>
+        <button onclick="saveHTML()">Save HTML</button>
+        <button class="secondary" onclick="openCredits()">Notes & Credits</button>
+    </div>
+</header>
+
+<div class="container">
+    <div id="blocklyDiv"></div>
+    <textarea id="output" readonly></textarea>
+</div>
+
+<!-- TOOLBOX -->
+<xml id="toolbox" style="display:none">
+    <block type="html_container"></block>
+    <block type="html_h1"></block>
+    <block type="html_p"></block>
+    <block type="text"></block>
+</xml>
+
+<!-- CREDITS MODAL -->
+<div class="modal" id="creditsModal">
+    <div class="modal-content">
+        <h2>Notes & Credits</h2>
+
+        <p><strong>EZHTML</strong> is released under the <strong>MIT License</strong>.</p>
+
+        <p>
+            Blockly is created by <strong>Google</strong> and distributed under the
+            <strong>Apache-2.0 License</strong>.
+        </p>
+
+        <p>
+            🌐 Official website:<br>
+            <a href="https://developers.google.com/blockly" target="_blank">
+                https://developers.google.com/blockly
+            </a>
+        </p>
+
+        <p>
+            📦 Source code:<br>
+            <a href="https://github.com/RaspberryPiFoundation/blockly?tab=Apache-2.0-1-ov-file#readme" target="_blank">
+                GitHub – Blockly (Apache-2.0)
+            </a>
+        </p>
+
+        <button class="secondary" onclick="closeCredits()">Close</button>
+    </div>
+</div>
+
+<script>
+/* ================= BLOCKS ================= */
+
+Blockly.Blocks['html_container'] = {
+    init() {
+        this.appendDummyInput().appendField("Container <div>");
+        this.appendStatementInput("CONTENT").appendField("Content");
+        this.setColour(210);
+    }
+};
+
+Blockly.Blocks['html_h1'] = {
+    init() {
+        this.appendValueInput("TEXT").appendField("Title <h1>");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(120);
+    }
+};
+
+Blockly.Blocks['html_p'] = {
+    init() {
+        this.appendValueInput("TEXT").appendField("Paragraph <p>");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(160);
+    }
+};
+
+/* ================= HTML GENERATOR ================= */
+
+const HTML = new Blockly.Generator('HTML');
+
+HTML.forBlock['html_container'] = function(block, generator) {
+    const content = generator.statementToCode(block, 'CONTENT');
+    return `<div>\n${content}</div>\n`;
+};
+
+HTML.forBlock['html_h1'] = function(block, generator) {
+    const txt = generator.valueToCode(block, 'TEXT', 0) || "''";
+    return `  <h1>${txt.replace(/^'|'$/g, '')}</h1>\n`;
+};
+
+HTML.forBlock['html_p'] = function(block, generator) {
+    const txt = generator.valueToCode(block, 'TEXT', 0) || "''";
+    return `  <p>${txt.replace(/^'|'$/g, '')}</p>\n`;
+};
+
+HTML.forBlock['text'] = function(block) {
+    return [`'${block.getFieldValue('TEXT')}'`, 0];
+};
+
+/* ================= WORKSPACE ================= */
+
+const workspace = Blockly.inject('blocklyDiv', {
+    toolbox: document.getElementById('toolbox'),
+    trashcan: true
+});
+
+function generateHTML() {
+    HTML.init(workspace);
+    document.getElementById('output').value =
+        HTML.workspaceToCode(workspace);
+}
+
+workspace.addChangeListener(generateHTML);
+
+/* ================= SAVE HTML ================= */
+
+function saveHTML() {
+    const content = document.getElementById('output').value;
+    const blob = new Blob([content], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "EZHTML_output.html";
+    a.click();
+}
+
+/* ================= CREDITS ================= */
+
+function openCredits() {
+    document.getElementById('creditsModal').style.display = "block";
+}
+
+function closeCredits() {
+    document.getElementById('creditsModal').style.display = "none";
+}
+</script>
+
+</body>
+</html>
