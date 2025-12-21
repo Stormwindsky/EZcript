@@ -1,1 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZcript | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --card: #111111;
+            --primary: #00f2ff;
+            --accent: #7000ff;
+            --text: #ffffff;
+            --text-dim: #666;
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg); 
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        nav {
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #222;
+        }
+        .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--primary); }
+        .settings-btn {
+            background: #222;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Main Content */
+        .container { padding: 50px 5%; max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 48px; margin-bottom: 40px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .item-card {
+            background: var(--card);
+            border: 1px solid #222;
+            padding: 30px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .item-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .item-card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .item-card span {
+            font-size: 12px;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        /* Modal */
+        #modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-box {
+            background: #111;
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid var(--primary);
+            text-align: center;
+        }
+        select {
+            margin: 20px 0;
+            padding: 10px;
+            width: 200px;
+            background: #222;
+            color: white;
+            border: 1px solid #444;
+        }
+
+        .loader { font-size: 20px; color: var(--primary); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">EZcript</div>
+        <button class="settings-btn" onclick="openModal()" id="set-btn">Settings</button>
+    </nav>
+
+    <div class="container">
+        <h1 id="main-title">Available Services</h1>
+        <div id="loader" class="loader">SCANNING API...</div>
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div id="modal">
+        <div class="modal-box">
+            <h2 id="modal-h">Settings</h2>
+            <select id="lang" onchange="updateLang(this.value)">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select><br>
+            <button class="settings-btn" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const owner = "stormwindsky";
+        const repo = "EZcript";
+        const basePath = "Lists";
+
+        const langData = {
+            en: { title: "Available Services", set: "Settings", load: "SCANNING API...", close: "Close" },
+            fr: { title: "Services Disponibles", set: "Paramètres", load: "RECHÈCHE API...", close: "Fermer" }
+        };
+
+        let currentLang = localStorage.getItem('ez_lang') || 'en';
+
+        function updateLang(l) {
+            currentLang = l;
+            localStorage.setItem('ez_lang', l);
+            document.getElementById('main-title').innerText = langData[l].title;
+            document.getElementById('set-btn').innerText = langData[l].set;
+            document.getElementById('modal-h').innerText = langData[l].set;
+            document.getElementById('lang').value = l;
+            // On refresh la grille pour les textes s'il y en a
+        }
+
+        function openModal() { document.getElementById('modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        async function scanFiles() {
+            const grid = document.getElementById('grid');
+            const loader = document.getElementById('loader');
+
+            try {
+                // Étape 1 : Lister les dossiers dans /Lists
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${basePath}`);
+                const folders = await res.json();
+
+                for (const item of folders) {
+                    if (item.type === 'dir') {
+                        // Étape 2 : Entrer dans chaque dossier pour chercher les .html
+                        const subRes = await fetch(item.url);
+                        const files = await subRes.json();
+
+                        files.forEach(file => {
+                            if (file.name.endsWith('.html')) {
+                                createCard(file.name.replace('.html', ''), item.name, file.name);
+                            }
+                        });
+                    }
+                }
+                loader.style.display = 'none';
+            } catch (e) {
+                loader.innerText = "Error loading files.";
+            }
+        }
+
+        function createCard(name, folder, fullName) {
+            const grid = document.getElementById('grid');
+            const card = document.createElement('a');
+            card.className = 'item-card';
+            // Construction de l'URL GitHub Pages
+            card.href = `https://${owner}.github.io/${repo}/${basePath}/${folder}/${fullName}`;
+            
+            card.innerHTML = `
+                <span>Service / ${folder}</span>
+                <h3>${name}</h3>
+                <p style="color:var(--primary); font-size:13px;">Launch Module →</p>
+            `;
+            grid.appendChild(card);
+        }
+
+        // Init
+        updateLang(currentLang);
+        scanFiles();
+    </script>
+</body>
+</html>
