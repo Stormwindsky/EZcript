@@ -8,69 +8,51 @@
 
 <style>
 body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background: #f4f4f9;
+  margin: 0;
+  padding: 20px;
+  background: #f0f2f5;
+  font-family: Arial, sans-serif;
 }
-
 header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-
 button {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    background: #4a6cf7;
-    color: white;
+  background: #4a6cf7;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
 }
-
-button.secondary {
-    background: #555;
-}
-
 .container {
-    display: flex;
-    gap: 20px;
-    height: 75vh;
-    margin-top: 10px;
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  height: 70vh;
 }
-
 #blocklyDiv {
-    flex: 2;
-    border: 1px solid #ccc;
-    background: white;
+  flex: 2;
+  background: #fff;
+  border-radius: 8px;
 }
-
 textarea {
-    flex: 1;
-    background: #1e1e1e;
-    color: #dcdcdc;
-    padding: 10px;
-    font-family: monospace;
-    border-radius: 6px;
+  flex: 1;
+  background: #1e1e1e;
+  color: #76c9de;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: Consolas, monospace;
 }
-
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background: white;
-    max-width: 600px;
-    margin: 10% auto;
-    padding: 20px;
-    border-radius: 10px;
-}
-
-.modal-content h2 {
-    margin-top: 0;
+.blocklyFlyoutBackground {
+  fill: #f5f5f5 !important;
+  fill-opacity: 1 !important;
 }
 </style>
 </head>
@@ -78,142 +60,208 @@ textarea {
 <body>
 
 <header>
-    <h2>EZHTML</h2>
-    <div>
-        <button onclick="saveHTML()">Save HTML</button>
-        <button class="secondary" onclick="openCredits()">Notes & Credits</button>
-    </div>
+  <div>
+    <strong>EZHTML</strong>
+    <input id="projectTitle" value="index"> .html
+  </div>
+  <button onclick="saveHTML()">Download</button>
 </header>
 
 <div class="container">
-    <div id="blocklyDiv"></div>
-    <textarea id="output" readonly></textarea>
+  <div id="blocklyDiv"></div>
+  <textarea id="output" readonly></textarea>
 </div>
 
-<!-- TOOLBOX -->
 <xml id="toolbox" style="display:none">
-    <block type="html_container"></block>
+  <category name="HTML" colour="210">
+    <block type="html_main"></block>
+    <block type="html_div"></block>
     <block type="html_h1"></block>
     <block type="html_p"></block>
+  </category>
+
+  <category name="CSS" colour="20">
+    <block type="html_style"></block>
+    <block type="css_bg"></block>
+  </category>
+
+  <category name="JavaScript" colour="60">
+    <block type="html_script"></block>
+    <block type="js_alert"></block>
+  </category>
+
+  <category name="Values" colour="160">
     <block type="text"></block>
+    <block type="colour_picker"></block>
+  </category>
 </xml>
 
-<!-- CREDITS MODAL -->
-<div class="modal" id="creditsModal">
-    <div class="modal-content">
-        <h2>Notes & Credits</h2>
-
-        <p><strong>EZHTML</strong> is released under the <strong>MIT License</strong>.</p>
-
-        <p>
-            Blockly is created by <strong>Google</strong> and distributed under the
-            <strong>Apache-2.0 License</strong>.
-        </p>
-
-        <p>
-            🌐 Official website:<br>
-            <a href="https://developers.google.com/blockly" target="_blank">
-                https://developers.google.com/blockly
-            </a>
-        </p>
-
-        <p>
-            📦 Source code:<br>
-            <a href="https://github.com/RaspberryPiFoundation/blockly?tab=Apache-2.0-1-ov-file#readme" target="_blank">
-                GitHub – Blockly (Apache-2.0)
-            </a>
-        </p>
-
-        <button class="secondary" onclick="closeCredits()">Close</button>
-    </div>
-</div>
-
 <script>
-/* ================= BLOCKS ================= */
+/* ===== UTILITY ===== */
+function cleanText(v) {
+  if (!v) return "";
+  return v.replace(/^["']|["']$/g, "");
+}
 
-Blockly.Blocks['html_container'] = {
-    init() {
-        this.appendDummyInput().appendField("Container <div>");
-        this.appendStatementInput("CONTENT").appendField("Content");
-        this.setColour(210);
-    }
+/* ===== COLOUR PICKER (JSON, STABLE) ===== */
+Blockly.defineBlocksWithJsonArray([
+  {
+    "type": "colour_picker",
+    "message0": "color %1",
+    "args0": [
+      { "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }
+    ],
+    "output": "String",
+    "colour": 20
+  }
+]);
+
+/* ===== HTML BLOCKS ===== */
+Blockly.Blocks['html_main'] = {
+  init() {
+    this.appendStatementInput("HEAD").appendField("HEAD");
+    this.appendStatementInput("BODY").appendField("BODY");
+    this.setColour(260);
+  }
+};
+
+Blockly.Blocks['html_div'] = {
+  init() {
+    this.appendStatementInput("CONTENT").appendField("DIV");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(210);
+  }
 };
 
 Blockly.Blocks['html_h1'] = {
-    init() {
-        this.appendValueInput("TEXT").appendField("Title <h1>");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-    }
+  init() {
+    this.appendValueInput("TEXT").appendField("H1");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(120);
+  }
 };
 
 Blockly.Blocks['html_p'] = {
-    init() {
-        this.appendValueInput("TEXT").appendField("Paragraph <p>");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-    }
+  init() {
+    this.appendValueInput("TEXT").appendField("Paragraph");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(160);
+  }
 };
 
-/* ================= HTML GENERATOR ================= */
-
-const HTML = new Blockly.Generator('HTML');
-
-HTML.forBlock['html_container'] = function(block, generator) {
-    const content = generator.statementToCode(block, 'CONTENT');
-    return `<div>\n${content}</div>\n`;
+/* ===== CSS BLOCKS ===== */
+Blockly.Blocks['html_style'] = {
+  init() {
+    this.appendStatementInput("RULES").appendField("STYLE");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(20);
+  }
 };
 
-HTML.forBlock['html_h1'] = function(block, generator) {
-    const txt = generator.valueToCode(block, 'TEXT', 0) || "''";
-    return `  <h1>${txt.replace(/^'|'$/g, '')}</h1>\n`;
+Blockly.Blocks['css_bg'] = {
+  init() {
+    this.appendValueInput("COLOR").appendField("Body background");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(20);
+  }
 };
 
-HTML.forBlock['html_p'] = function(block, generator) {
-    const txt = generator.valueToCode(block, 'TEXT', 0) || "''";
-    return `  <p>${txt.replace(/^'|'$/g, '')}</p>\n`;
+/* ===== JS BLOCKS ===== */
+Blockly.Blocks['html_script'] = {
+  init() {
+    this.appendStatementInput("CODE").appendField("SCRIPT");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(60);
+  }
 };
 
-HTML.forBlock['text'] = function(block) {
-    return [`'${block.getFieldValue('TEXT')}'`, 0];
+Blockly.Blocks['js_alert'] = {
+  init() {
+    this.appendValueInput("TEXT").appendField("Alert");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(60);
+  }
 };
 
-/* ================= WORKSPACE ================= */
+/* ===== GENERATOR ===== */
+const GEN = new Blockly.Generator("GEN");
 
-const workspace = Blockly.inject('blocklyDiv', {
-    toolbox: document.getElementById('toolbox'),
-    trashcan: true
+GEN.forBlock['html_main'] = (b, g) =>
+`<!DOCTYPE html>
+<html>
+<head>
+${g.statementToCode(b, "HEAD")}
+</head>
+<body>
+${g.statementToCode(b, "BODY")}
+</body>
+</html>`;
+
+GEN.forBlock['html_div'] = (b, g) =>
+`<div>
+${g.statementToCode(b, "CONTENT")}</div>
+`;
+
+GEN.forBlock['html_h1'] = b =>
+`<h1>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</h1>
+`;
+
+GEN.forBlock['html_p'] = b =>
+`<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>
+`;
+
+GEN.forBlock['html_style'] = (b, g) =>
+`<style>
+${g.statementToCode(b, "RULES")}</style>
+`;
+
+GEN.forBlock['css_bg'] = b =>
+`body { background: ${GEN.valueToCode(b, "COLOR", 0)}; }
+`;
+
+GEN.forBlock['html_script'] = (b, g) =>
+`<script>
+${g.statementToCode(b, "CODE")}<\/script>
+`;
+
+GEN.forBlock['js_alert'] = b =>
+`alert("${cleanText(GEN.valueToCode(b, "TEXT", 0))}");
+`;
+
+GEN.forBlock['text'] = b =>
+[`"${b.getFieldValue("TEXT")}"`, 0];
+
+GEN.forBlock['colour_picker'] = b =>
+[`"${b.getFieldValue("COLOUR")}"`, 0];
+
+/* ===== WORKSPACE ===== */
+const workspace = Blockly.inject("blocklyDiv", {
+  toolbox: toolbox,
+  renderer: "geras",
+  trashcan: true,
+  grid: { spacing: 20, length: 3, colour: "#ccc", snap: true }
 });
 
-function generateHTML() {
-    HTML.init(workspace);
-    document.getElementById('output').value =
-        HTML.workspaceToCode(workspace);
-}
+workspace.addChangeListener(() => {
+  GEN.init(workspace);
+  output.value = GEN.workspaceToCode(workspace);
+});
 
-workspace.addChangeListener(generateHTML);
-
-/* ================= SAVE HTML ================= */
-
+/* ===== SAVE ===== */
 function saveHTML() {
-    const content = document.getElementById('output').value;
-    const blob = new Blob([content], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "EZHTML_output.html";
-    a.click();
-}
-
-/* ================= CREDITS ================= */
-
-function openCredits() {
-    document.getElementById('creditsModal').style.display = "block";
-}
-
-function closeCredits() {
-    document.getElementById('creditsModal').style.display = "none";
+  const name = projectTitle.value || "index";
+  const blob = new Blob([output.value], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name + ".html";
+  a.click();
 }
 </script>
 
