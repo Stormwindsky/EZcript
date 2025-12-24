@@ -13,6 +13,18 @@
             --accent: #7000ff;
             --text: #ffffff;
             --text-dim: #666;
+            --border: #222;
+        }
+
+        /* Mode Clair */
+        [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --primary: #4a6cf7;
+            --accent: #3653d1;
+            --text: #333333;
+            --text-dim: #888;
+            --border: #ddd;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,6 +33,7 @@
             background: var(--bg); 
             color: var(--text);
             min-height: 100vh;
+            transition: all 0.3s ease;
         }
 
         /* Navbar */
@@ -29,12 +42,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #222;
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
         }
         .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--primary); }
+        .nav-btns { display: flex; gap: 10px; }
         .settings-btn {
-            background: #222;
-            color: white;
+            background: var(--border);
+            color: var(--text);
             border: none;
             padding: 8px 15px;
             border-radius: 5px;
@@ -54,11 +69,11 @@
 
         .item-card {
             background: var(--card);
-            border: 1px solid #222;
+            border: 1px solid var(--border);
             padding: 30px;
             border-radius: 15px;
             text-decoration: none;
-            color: white;
+            color: var(--text);
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -93,19 +108,20 @@
             align-items: center;
         }
         .modal-box {
-            background: #111;
+            background: var(--card);
             padding: 40px;
             border-radius: 20px;
             border: 1px solid var(--primary);
             text-align: center;
+            color: var(--text);
         }
         select {
             margin: 20px 0;
             padding: 10px;
             width: 200px;
-            background: #222;
-            color: white;
-            border: 1px solid #444;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
         }
 
         .loader { font-size: 20px; color: var(--primary); font-weight: bold; }
@@ -115,7 +131,10 @@
 
     <nav>
         <div class="logo">EZcript</div>
-        <button class="settings-btn" onclick="openModal()" id="set-btn">Settings</button>
+        <div class="nav-btns">
+            <button class="settings-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
+            <button class="settings-btn" onclick="openModal()" id="set-btn">Settings</button>
+        </div>
     </nav>
 
     <div class="container">
@@ -142,19 +161,34 @@
 
         const langData = {
             en: { title: "Available Services", set: "Settings", load: "SCANNING API...", close: "Close" },
-            fr: { title: "Services Disponibles", set: "Paramètres", load: "RECHÈCHE API...", close: "Fermer" }
+            fr: { title: "Services Disponibles", set: "Paramètres", load: "RECHERCHE API...", close: "Fermer" }
         };
 
-        let currentLang = localStorage.getItem('ez_lang') || 'en';
+        // Gestion Thème et Langue synchronisée
+        function applyGlobalSettings() {
+            const theme = localStorage.getItem('ez_theme') || 'dark';
+            const lang = localStorage.getItem('ez_lang') || 'en';
+
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('theme-btn').innerText = theme === 'dark' ? "🌙" : "☀️";
+            
+            // Langue
+            document.getElementById('main-title').innerText = langData[lang].title;
+            document.getElementById('set-btn').innerText = langData[lang].set;
+            document.getElementById('modal-h').innerText = langData[lang].set;
+            document.getElementById('lang').value = lang;
+        }
+
+        function toggleTheme() {
+            const current = localStorage.getItem('ez_theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('ez_theme', next);
+            applyGlobalSettings();
+        }
 
         function updateLang(l) {
-            currentLang = l;
             localStorage.setItem('ez_lang', l);
-            document.getElementById('main-title').innerText = langData[l].title;
-            document.getElementById('set-btn').innerText = langData[l].set;
-            document.getElementById('modal-h').innerText = langData[l].set;
-            document.getElementById('lang').value = l;
-            // On refresh la grille pour les textes s'il y en a
+            applyGlobalSettings();
         }
 
         function openModal() { document.getElementById('modal').style.display = 'flex'; }
@@ -163,18 +197,13 @@
         async function scanFiles() {
             const grid = document.getElementById('grid');
             const loader = document.getElementById('loader');
-
             try {
-                // Étape 1 : Lister les dossiers dans /Lists
                 const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${basePath}`);
                 const folders = await res.json();
-
                 for (const item of folders) {
                     if (item.type === 'dir') {
-                        // Étape 2 : Entrer dans chaque dossier pour chercher les .html
                         const subRes = await fetch(item.url);
                         const files = await subRes.json();
-
                         files.forEach(file => {
                             if (file.name.endsWith('.html')) {
                                 createCard(file.name.replace('.html', ''), item.name, file.name);
@@ -192,9 +221,7 @@
             const grid = document.getElementById('grid');
             const card = document.createElement('a');
             card.className = 'item-card';
-            // Construction de l'URL GitHub Pages
             card.href = `https://${owner}.github.io/${repo}/${basePath}/${folder}/${fullName}`;
-            
             card.innerHTML = `
                 <span>Service / ${folder}</span>
                 <h3>${name}</h3>
@@ -204,7 +231,7 @@
         }
 
         // Init
-        updateLang(currentLang);
+        applyGlobalSettings();
         scanFiles();
     </script>
 </body>
