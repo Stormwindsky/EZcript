@@ -19,3 +19,8 @@ http://developers.google.com/blockly
 # Official template
 
 https://github.com/Stormwindsky/Template-EZcript-Projects
+
+
+# More info
+
+Here: https://github.com/Stormwindsky/EZcriptWorld
