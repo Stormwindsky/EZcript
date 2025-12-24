@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZcript | 404 Not Found</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --card: #111111;
+            --primary: #00f2ff;
+            --accent: #7000ff;
+            --text: #ffffff;
+            --text-dim: #666;
+            --border: #222;
+        }
+
+        [data-theme="light"] {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --primary: #4a6cf7;
+            --accent: #3653d1;
+            --text: #333333;
+            --text-dim: #888;
+            --border: #ddd;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg); 
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        nav {
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
+        }
+        .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--primary); text-decoration: none; }
+
+        .container { 
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 50px 5%;
+            text-align: center;
+        }
+
+        .error-code {
+            font-size: 120px;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        h1 { font-size: 32px; margin-bottom: 20px; }
+        p { color: var(--text-dim); margin-bottom: 40px; font-size: 18px; max-width: 500px; }
+
+        .back-btn {
+            background: var(--primary);
+            color: #000;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 242, 255, 0.2);
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(0, 242, 255, 0.4);
+            filter: brightness(1.1);
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="https://stormwindsky.github.io/EZcript/" class="logo">EZcript</a>
+    </nav>
+
+    <div class="container">
+        <div class="error-code">404</div>
+        <h1 id="404-title">On dirait que tu t'es perdu...</h1>
+        <p id="404-desc">La page que vous recherchez n'existe pas ou a été déplacée.</p>
+        <a href="https://stormwindsky.github.io/EZcript/" class="back-btn" id="404-btn">Retour à l'accueil</a>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                title: "It looks like you're lost...",
+                desc: "The page you are looking for doesn't exist or has been moved.",
+                btn: "Back to Home"
+            },
+            fr: {
+                title: "On dirait que tu t'es perdu...",
+                desc: "La page que vous recherchez n'existe pas ou a été déplacée.",
+                btn: "Retour à l'accueil"
+            }
+        };
+
+        function applySettings() {
+            // Récupération des réglages depuis localStorage
+            const theme = localStorage.getItem('ez_theme') || 'dark';
+            const lang = localStorage.getItem('ez_lang') || 'en';
+
+            // Appliquer le thème
+            document.documentElement.setAttribute('data-theme', theme);
+
+            // Appliquer la langue
+            document.getElementById('404-title').innerText = translations[lang].title;
+            document.getElementById('404-desc').innerText = translations[lang].desc;
+            document.getElementById('404-btn').innerText = translations[lang].btn;
+            
+            // Ajuster l'attribut lang du HTML
+            document.documentElement.lang = lang;
+        }
+
+        // Initialisation
+        applySettings();
+    </script>
+</body>
+</html>
