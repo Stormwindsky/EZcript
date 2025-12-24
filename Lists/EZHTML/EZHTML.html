@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>EZHTML</title>
+<title>EZHTML - Fix Final</title>
 
 <script src="https://unpkg.com/blockly/blockly.min.js"></script>
 
@@ -76,8 +76,11 @@ textarea {
   <category name="HTML" colour="210">
     <block type="html_main"></block>
     <block type="html_div"></block>
-    <block type="html_h1"></block>
+    <block type="html_hn"></block>
     <block type="html_p"></block>
+    <block type="html_br"></block>
+    <block type="html_img"></block>
+    <block type="html_iframe"></block>
   </category>
 
   <category name="CSS" colour="20">
@@ -88,6 +91,10 @@ textarea {
   <category name="JavaScript" colour="60">
     <block type="html_script"></block>
     <block type="js_alert"></block>
+  </category>
+
+  <category name="Custom" colour="290">
+    <block type="custom_tag"></block>
   </category>
 
   <category name="Values" colour="160">
@@ -103,7 +110,7 @@ function cleanText(v) {
   return v.replace(/^["']|["']$/g, "");
 }
 
-/* ===== COLOUR PICKER (JSON, STABLE) ===== */
+/* ===== COLOUR PICKER ===== */
 Blockly.defineBlocksWithJsonArray([
   {
     "type": "colour_picker",
@@ -134,9 +141,11 @@ Blockly.Blocks['html_div'] = {
   }
 };
 
-Blockly.Blocks['html_h1'] = {
+Blockly.Blocks['html_hn'] = {
   init() {
-    this.appendValueInput("TEXT").appendField("H1");
+    this.appendValueInput("TEXT")
+        .appendField("H")
+        .appendField(new Blockly.FieldDropdown([["1","1"], ["2","2"], ["3","3"], ["4","4"], ["5","5"], ["6","6"]]), "LEVEL");
     this.setPreviousStatement(true);
     this.setNextStatement(true);
     this.setColour(120);
@@ -149,6 +158,50 @@ Blockly.Blocks['html_p'] = {
     this.setPreviousStatement(true);
     this.setNextStatement(true);
     this.setColour(160);
+  }
+};
+
+Blockly.Blocks['html_br'] = {
+  init() {
+    this.appendDummyInput().appendField("Line Break <br>");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(160);
+  }
+};
+
+Blockly.Blocks['html_img'] = {
+  init() {
+    this.appendDummyInput()
+        .appendField("Image URL:")
+        .appendField(new Blockly.FieldTextInput("https://upload.wikimedia.org/wikipedia/commons/2/2e/Pi_unrolled_cc0.gif"), "SRC");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(210);
+  }
+};
+
+Blockly.Blocks['html_iframe'] = {
+  init() {
+    this.appendDummyInput()
+        .appendField("Iframe URL:")
+        .appendField(new Blockly.FieldTextInput("https://en.wikipedia.org/wiki/Wikipedia"), "SRC");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(210);
+  }
+};
+
+Blockly.Blocks['custom_tag'] = {
+  init() {
+    this.appendDummyInput()
+        .appendField("Custom Tag <")
+        .appendField(new Blockly.FieldTextInput("section"), "TAG")
+        .appendField(">");
+    this.appendStatementInput("CONTENT");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(290);
   }
 };
 
@@ -193,6 +246,13 @@ Blockly.Blocks['js_alert'] = {
 /* ===== GENERATOR ===== */
 const GEN = new Blockly.Generator("GEN");
 
+// SCRATCH-LIKE MULTI-BLOCK SUPPORT
+GEN.scrub_ = function(block, code, opt_thisOnly) {
+  const nextBlock = block.getNextBlock();
+  const nextCode = (nextBlock && !opt_thisOnly) ? GEN.blockToCode(nextBlock) : '';
+  return code + nextCode;
+};
+
 GEN.forBlock['html_main'] = (b, g) =>
 `<!DOCTYPE html>
 <html>
@@ -206,34 +266,46 @@ ${g.statementToCode(b, "BODY")}
 
 GEN.forBlock['html_div'] = (b, g) =>
 `<div>
-${g.statementToCode(b, "CONTENT")}</div>
-`;
+${g.statementToCode(b, "CONTENT")}</div>\n`;
 
-GEN.forBlock['html_h1'] = b =>
-`<h1>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</h1>
-`;
+GEN.forBlock['html_hn'] = b => {
+  const level = b.getFieldValue('LEVEL');
+  const text = cleanText(GEN.valueToCode(b, "TEXT", 0));
+  return `<h${level}>${text}</h${level}>\n`;
+};
 
 GEN.forBlock['html_p'] = b =>
-`<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>
-`;
+`<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>\n`;
+
+GEN.forBlock['html_br'] = b => `<br>\n`;
+
+GEN.forBlock['html_img'] = b => {
+  const src = b.getFieldValue('SRC');
+  return `<img src="${src}" style="max-width:100%;">\n`;
+};
+
+GEN.forBlock['html_iframe'] = b => {
+  const src = b.getFieldValue('SRC');
+  return `<iframe src="${src}" width="100%" height="300"></iframe>\n`;
+};
+
+GEN.forBlock['custom_tag'] = (b, g) => {
+  const tag = b.getFieldValue('TAG');
+  const content = g.statementToCode(b, "CONTENT");
+  return `<${tag}>\n${content}</${tag}>\n`;
+};
 
 GEN.forBlock['html_style'] = (b, g) =>
-`<style>
-${g.statementToCode(b, "RULES")}</style>
-`;
+`<style>\n${g.statementToCode(b, "RULES")}</style>\n`;
 
 GEN.forBlock['css_bg'] = b =>
-`body { background: ${GEN.valueToCode(b, "COLOR", 0)}; }
-`;
+`body { background: ${GEN.valueToCode(b, "COLOR", 0)}; }\n`;
 
 GEN.forBlock['html_script'] = (b, g) =>
-`<script>
-${g.statementToCode(b, "CODE")}<\/script>
-`;
+`<script>\n${g.statementToCode(b, "CODE")}<\/script>\n`;
 
 GEN.forBlock['js_alert'] = b =>
-`alert("${cleanText(GEN.valueToCode(b, "TEXT", 0))}");
-`;
+`alert("${cleanText(GEN.valueToCode(b, "TEXT", 0))}");\n`;
 
 GEN.forBlock['text'] = b =>
 [`"${b.getFieldValue("TEXT")}"`, 0];
