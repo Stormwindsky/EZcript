@@ -21,6 +21,11 @@ header {
   justify-content: space-between;
   align-items: center;
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
 button {
   background: #4a6cf7;
   color: #fff;
@@ -29,6 +34,17 @@ button {
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover {
+  background: #3653d1;
+}
+.btn-load {
+  background: #e9ecef;
+  color: #495057;
+}
+.btn-load:hover {
+  background: #dee2e6;
 }
 .container {
   display: flex;
@@ -54,15 +70,64 @@ textarea {
   fill: #f5f5f5 !important;
   fill-opacity: 1 !important;
 }
+
+/* --- MODAL POPUP STYLES --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  max-width: 400px;
+  width: 90%;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-content h3 { margin: 0 0 10px 0; color: #333; }
+.modal-content p { color: #666; margin-bottom: 25px; }
+.btn-group { display: flex; gap: 15px; }
+.btn-choice {
+  flex: 1;
+  padding: 15px 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.btn-choice small { font-weight: normal; font-size: 0.75em; opacity: 0.8; }
+.btn-choice:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+.btn-html { background: #4a6cf7; color: white; }
+.btn-ez { background: #2ecc71; color: white; }
+.btn-cancel { margin-top: 20px; background: transparent; color: #999; padding: 5px; font-weight: normal;}
 </style>
 </head>
 
 <body>
 
 <header>
-  <div>
+  <div class="header-left">
     <strong>EZHTML</strong>
-    <input id="projectTitle" value="index"> .html
+    <input id="projectTitle" value="index" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; width: 80px;"> .html
+    <button class="btn-load" onclick="document.getElementById('fileInput').click()">Open Project (.ezhtml)</button>
+    <input type="file" id="fileInput" style="display:none" accept=".ezhtml" onchange="loadEZHTML(this)">
   </div>
   <button onclick="saveHTML()">Download</button>
 </header>
@@ -70,6 +135,24 @@ textarea {
 <div class="container">
   <div id="blocklyDiv"></div>
   <textarea id="output" readonly></textarea>
+</div>
+
+<div id="saveModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Export Project</h3>
+    <p>Choose your preferred format:</p>
+    <div class="btn-group">
+      <button class="btn-choice btn-html" onclick="downloadLogic('html')">
+        <span>.HTML File</span>
+        <small>Web-ready code</small>
+      </button>
+      <button class="btn-choice btn-ez" onclick="downloadLogic('ezhtml')">
+        <span>.EZHTML File</span>
+        <small>Editable blocks</small>
+      </button>
+    </div>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  </div>
 </div>
 
 <xml id="toolbox" style="display:none">
@@ -82,21 +165,17 @@ textarea {
     <block type="html_img"></block>
     <block type="html_iframe"></block>
   </category>
-
   <category name="CSS" colour="20">
     <block type="html_style"></block>
     <block type="css_bg"></block>
   </category>
-
   <category name="JavaScript" colour="60">
     <block type="html_script"></block>
     <block type="js_alert"></block>
   </category>
-
   <category name="Custom" colour="290">
     <block type="custom_tag"></block>
   </category>
-
   <category name="Values" colour="160">
     <block type="text"></block>
     <block type="colour_picker"></block>
@@ -111,17 +190,13 @@ function cleanText(v) {
 }
 
 /* ===== COLOUR PICKER ===== */
-Blockly.defineBlocksWithJsonArray([
-  {
+Blockly.defineBlocksWithJsonArray([{
     "type": "colour_picker",
     "message0": "color %1",
-    "args0": [
-      { "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }
-    ],
+    "args0": [{ "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }],
     "output": "String",
     "colour": 20
-  }
-]);
+}]);
 
 /* ===== HTML BLOCKS ===== */
 Blockly.Blocks['html_main'] = {
@@ -131,7 +206,6 @@ Blockly.Blocks['html_main'] = {
     this.setColour(260);
   }
 };
-
 Blockly.Blocks['html_div'] = {
   init() {
     this.appendStatementInput("CONTENT").appendField("DIV");
@@ -140,7 +214,6 @@ Blockly.Blocks['html_div'] = {
     this.setColour(210);
   }
 };
-
 Blockly.Blocks['html_hn'] = {
   init() {
     this.appendValueInput("TEXT")
@@ -151,7 +224,6 @@ Blockly.Blocks['html_hn'] = {
     this.setColour(120);
   }
 };
-
 Blockly.Blocks['html_p'] = {
   init() {
     this.appendValueInput("TEXT").appendField("Paragraph");
@@ -160,7 +232,6 @@ Blockly.Blocks['html_p'] = {
     this.setColour(160);
   }
 };
-
 Blockly.Blocks['html_br'] = {
   init() {
     this.appendDummyInput().appendField("Line Break <br>");
@@ -169,7 +240,6 @@ Blockly.Blocks['html_br'] = {
     this.setColour(160);
   }
 };
-
 Blockly.Blocks['html_img'] = {
   init() {
     this.appendDummyInput()
@@ -180,7 +250,6 @@ Blockly.Blocks['html_img'] = {
     this.setColour(210);
   }
 };
-
 Blockly.Blocks['html_iframe'] = {
   init() {
     this.appendDummyInput()
@@ -191,7 +260,6 @@ Blockly.Blocks['html_iframe'] = {
     this.setColour(210);
   }
 };
-
 Blockly.Blocks['custom_tag'] = {
   init() {
     this.appendDummyInput()
@@ -204,8 +272,6 @@ Blockly.Blocks['custom_tag'] = {
     this.setColour(290);
   }
 };
-
-/* ===== CSS BLOCKS ===== */
 Blockly.Blocks['html_style'] = {
   init() {
     this.appendStatementInput("RULES").appendField("STYLE");
@@ -214,7 +280,6 @@ Blockly.Blocks['html_style'] = {
     this.setColour(20);
   }
 };
-
 Blockly.Blocks['css_bg'] = {
   init() {
     this.appendValueInput("COLOR").appendField("Body background");
@@ -223,8 +288,6 @@ Blockly.Blocks['css_bg'] = {
     this.setColour(20);
   }
 };
-
-/* ===== JS BLOCKS ===== */
 Blockly.Blocks['html_script'] = {
   init() {
     this.appendStatementInput("CODE").appendField("SCRIPT");
@@ -233,7 +296,6 @@ Blockly.Blocks['html_script'] = {
     this.setColour(60);
   }
 };
-
 Blockly.Blocks['js_alert'] = {
   init() {
     this.appendValueInput("TEXT").appendField("Alert");
@@ -245,73 +307,29 @@ Blockly.Blocks['js_alert'] = {
 
 /* ===== GENERATOR ===== */
 const GEN = new Blockly.Generator("GEN");
-
-// SCRATCH-LIKE MULTI-BLOCK SUPPORT
 GEN.scrub_ = function(block, code, opt_thisOnly) {
   const nextBlock = block.getNextBlock();
   const nextCode = (nextBlock && !opt_thisOnly) ? GEN.blockToCode(nextBlock) : '';
   return code + nextCode;
 };
-
-GEN.forBlock['html_main'] = (b, g) =>
-`<!DOCTYPE html>
-<html>
-<head>
-${g.statementToCode(b, "HEAD")}
-</head>
-<body>
-${g.statementToCode(b, "BODY")}
-</body>
-</html>`;
-
-GEN.forBlock['html_div'] = (b, g) =>
-`<div>
-${g.statementToCode(b, "CONTENT")}</div>\n`;
-
+GEN.forBlock['html_main'] = (b, g) => `<!DOCTYPE html>\n<html>\n<head>\n${g.statementToCode(b, "HEAD")}</head>\n<body>\n${g.statementToCode(b, "BODY")}</body>\n</html>`;
+GEN.forBlock['html_div'] = (b, g) => `<div>\n${g.statementToCode(b, "CONTENT")}</div>\n`;
 GEN.forBlock['html_hn'] = b => {
   const level = b.getFieldValue('LEVEL');
   const text = cleanText(GEN.valueToCode(b, "TEXT", 0));
   return `<h${level}>${text}</h${level}>\n`;
 };
-
-GEN.forBlock['html_p'] = b =>
-`<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>\n`;
-
+GEN.forBlock['html_p'] = b => `<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>\n`;
 GEN.forBlock['html_br'] = b => `<br>\n`;
-
-GEN.forBlock['html_img'] = b => {
-  const src = b.getFieldValue('SRC');
-  return `<img src="${src}" style="max-width:100%;">\n`;
-};
-
-GEN.forBlock['html_iframe'] = b => {
-  const src = b.getFieldValue('SRC');
-  return `<iframe src="${src}" width="100%" height="300"></iframe>\n`;
-};
-
-GEN.forBlock['custom_tag'] = (b, g) => {
-  const tag = b.getFieldValue('TAG');
-  const content = g.statementToCode(b, "CONTENT");
-  return `<${tag}>\n${content}</${tag}>\n`;
-};
-
-GEN.forBlock['html_style'] = (b, g) =>
-`<style>\n${g.statementToCode(b, "RULES")}</style>\n`;
-
-GEN.forBlock['css_bg'] = b =>
-`body { background: ${GEN.valueToCode(b, "COLOR", 0)}; }\n`;
-
-GEN.forBlock['html_script'] = (b, g) =>
-`<script>\n${g.statementToCode(b, "CODE")}<\/script>\n`;
-
-GEN.forBlock['js_alert'] = b =>
-`alert("${cleanText(GEN.valueToCode(b, "TEXT", 0))}");\n`;
-
-GEN.forBlock['text'] = b =>
-[`"${b.getFieldValue("TEXT")}"`, 0];
-
-GEN.forBlock['colour_picker'] = b =>
-[`"${b.getFieldValue("COLOUR")}"`, 0];
+GEN.forBlock['html_img'] = b => `<img src="${b.getFieldValue('SRC')}" style="max-width:100%;">\n`;
+GEN.forBlock['html_iframe'] = b => `<iframe src="${b.getFieldValue('SRC')}" width="100%" height="300"></iframe>\n`;
+GEN.forBlock['custom_tag'] = (b, g) => `<${b.getFieldValue('TAG')}>\n${g.statementToCode(b, "CONTENT")}</${b.getFieldValue('TAG')}>\n`;
+GEN.forBlock['html_style'] = (b, g) => `<style>\n${g.statementToCode(b, "RULES")}</style>\n`;
+GEN.forBlock['css_bg'] = b => `body { background: ${GEN.valueToCode(b, "COLOR", 0)}; }\n`;
+GEN.forBlock['html_script'] = (b, g) => `<script>\n${g.statementToCode(b, "CODE")}<\/script>\n`;
+GEN.forBlock['js_alert'] = b => `alert("${cleanText(GEN.valueToCode(b, "TEXT", 0))}");\n`;
+GEN.forBlock['text'] = b => [`"${b.getFieldValue("TEXT")}"`, 0];
+GEN.forBlock['colour_picker'] = b => [`"${b.getFieldValue("COLOUR")}"`, 0];
 
 /* ===== WORKSPACE ===== */
 const workspace = Blockly.inject("blocklyDiv", {
@@ -323,18 +341,45 @@ const workspace = Blockly.inject("blocklyDiv", {
 
 workspace.addChangeListener(() => {
   GEN.init(workspace);
-  output.value = GEN.workspaceToCode(workspace);
+  document.getElementById('output').value = GEN.workspaceToCode(workspace);
 });
 
-/* ===== SAVE ===== */
-function saveHTML() {
-  const name = projectTitle.value || "index";
-  const blob = new Blob([output.value], { type: "text/html" });
+/* ===== SAVE/LOAD LOGIC ===== */
+const modal = document.getElementById('saveModal');
+
+function saveHTML() { modal.style.display = 'flex'; }
+function closeModal() { modal.style.display = 'none'; }
+
+function downloadLogic(type) {
+  const name = document.getElementById('projectTitle').value || "index";
+  let content = (type === 'html') ? document.getElementById('output').value : Blockly.Xml.domToPrettyText(Blockly.Xml.workspaceToDom(workspace));
+  const blob = new Blob([content], { type: (type === 'html') ? "text/html" : "text/xml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = name + ".html";
+  a.download = name + (type === 'html' ? ".html" : ".ezhtml");
   a.click();
+  closeModal();
 }
+
+function loadEZHTML(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      workspace.clear();
+      const xml = Blockly.utils.xml.textToDom(e.target.result);
+      Blockly.Xml.domToWorkspace(xml, workspace);
+      document.getElementById('projectTitle').value = file.name.replace('.ezhtml', '');
+    } catch (err) {
+      alert("Error: Invalid .ezhtml file");
+    }
+  };
+  reader.readAsText(file);
+  input.value = ""; // Reset input
+}
+
+window.onclick = (e) => { if (e.target == modal) closeModal(); }
 </script>
 
 </body>
