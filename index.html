@@ -16,7 +16,6 @@
             --border: #222;
         }
 
-        /* Mode Clair */
         [data-theme="light"] {
             --bg: #f0f2f5;
             --card: #ffffff;
@@ -44,18 +43,29 @@
             align-items: center;
             border-bottom: 1px solid var(--border);
             background: var(--card);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--primary); }
-        .nav-btns { display: flex; gap: 10px; }
-        .settings-btn {
+        .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--primary); text-decoration: none; }
+        .nav-btns { display: flex; gap: 10px; align-items: center; }
+        
+        .btn {
             background: var(--border);
             color: var(--text);
             border: none;
             padding: 8px 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
+            transition: 0.2s;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        .btn:hover { background: var(--primary); color: #000; }
 
         /* Main Content */
         .container { padding: 50px 5%; max-width: 1400px; margin: 0 auto; }
@@ -76,7 +86,6 @@
             color: var(--text);
             transition: all 0.3s ease;
             position: relative;
-            overflow: hidden;
         }
 
         .item-card:hover {
@@ -85,43 +94,57 @@
             box-shadow: 0 10px 30px rgba(0, 242, 255, 0.1);
         }
 
-        .item-card h3 {
-            font-size: 20px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
+        .item-card h3 { font-size: 20px; margin-bottom: 10px; text-transform: uppercase; }
+        .item-card span { font-size: 12px; color: var(--text-dim); display: block; }
 
-        .item-card span {
-            font-size: 12px;
-            color: var(--text-dim);
-            display: block;
-        }
-
-        /* Modal */
-        #modal {
+        /* Modals */
+        .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
         .modal-box {
             background: var(--card);
-            padding: 40px;
+            padding: 30px;
             border-radius: 20px;
             border: 1px solid var(--primary);
-            text-align: center;
-            color: var(--text);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            animation: slideIn 0.3s ease-out;
         }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .close-x {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .close-x:hover { color: var(--primary); }
+
+        .modal-box h2 { margin-bottom: 20px; color: var(--primary); }
+        .modal-box p { font-size: 14px; line-height: 1.6; margin-bottom: 15px; color: var(--text-dim); text-align: left; }
+        .modal-box a { color: var(--primary); text-decoration: none; font-weight: bold; }
+        
         select {
             margin: 20px 0;
             padding: 10px;
-            width: 200px;
+            width: 100%;
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
+            border-radius: 5px;
         }
 
         .loader { font-size: 20px; color: var(--primary); font-weight: bold; }
@@ -130,10 +153,12 @@
 <body>
 
     <nav>
-        <div class="logo">EZcript</div>
+        <a href="#" class="logo">EZcript</a>
         <div class="nav-btns">
-            <button class="settings-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
-            <button class="settings-btn" onclick="openModal()" id="set-btn">Settings</button>
+            <a href="https://github.com/Stormwindsky/EZcript" target="_blank" class="btn">GitHub</a>
+            <button class="btn" onclick="openModal('modal-credits')" id="btn-credits">Credits</button>
+            <button class="btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
+            <button class="btn" onclick="openModal('modal-settings')" id="btn-settings">Settings</button>
         </div>
     </nav>
 
@@ -143,14 +168,25 @@
         <div class="grid" id="grid"></div>
     </div>
 
-    <div id="modal">
+    <div id="modal-settings" class="modal-overlay">
         <div class="modal-box">
-            <h2 id="modal-h">Settings</h2>
+            <button class="close-x" onclick="closeModal('modal-settings')">&times;</button>
+            <h2 id="modal-h-settings">Settings</h2>
             <select id="lang" onchange="updateLang(this.value)">
                 <option value="en">English</option>
                 <option value="fr">Français</option>
-            </select><br>
-            <button class="settings-btn" onclick="closeModal()">Close</button>
+            </select>
+            <button class="btn" style="width:100%" onclick="closeModal('modal-settings')">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-credits" class="modal-overlay">
+        <div class="modal-box">
+            <button class="close-x" onclick="closeModal('modal-credits')">&times;</button>
+            <h2 id="modal-h-credits">Notes & Credits</h2>
+            <div id="credits-content">
+                </div>
+            <button class="btn" style="width:100%; margin-top:20px;" onclick="closeModal('modal-credits')">Close</button>
         </div>
     </div>
 
@@ -160,11 +196,28 @@
         const basePath = "Lists";
 
         const langData = {
-            en: { title: "Available Services", set: "Settings", load: "SCANNING API...", close: "Close" },
-            fr: { title: "Services Disponibles", set: "Paramètres", load: "RECHERCHE API...", close: "Fermer" }
+            en: { 
+                title: "Available Services", 
+                settings: "Settings", 
+                load: "SCANNING API...", 
+                close: "Close",
+                credits: "Notes & Credits",
+                desc: "EZcript is an open source website that makes it easy to create visual maneuvering scripts created by Stormwindsky.",
+                license: "The website is licensed under <b>MIT</b>, but the visual scripting system <b>Blockly</b> (created by MIT & Google) is licensed under the <b>Apache-2.0</b> license.",
+                links: "Links:"
+            },
+            fr: { 
+                title: "Services Disponibles", 
+                settings: "Paramètres", 
+                load: "RECHERCHE API...", 
+                close: "Fermer",
+                credits: "Notes & Crédits",
+                desc: "EZcript est un site open source créé par Stormwindsky qui facilite la création de scripts de manœuvre visuels.",
+                license: "Le site web est sous licence <b>MIT</b>, mais le système de script visuel <b>Blockly</b> (créé par MIT & Google) est sous licence <b>Apache-2.0</b>.",
+                links: "Liens :"
+            }
         };
 
-        // Gestion Thème et Langue synchronisée
         function applyGlobalSettings() {
             const theme = localStorage.getItem('ez_theme') || 'dark';
             const lang = localStorage.getItem('ez_lang') || 'en';
@@ -172,11 +225,25 @@
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('theme-btn').innerText = theme === 'dark' ? "🌙" : "☀️";
             
-            // Langue
-            document.getElementById('main-title').innerText = langData[lang].title;
-            document.getElementById('set-btn').innerText = langData[lang].set;
-            document.getElementById('modal-h').innerText = langData[lang].set;
+            // Traductions
+            const d = langData[lang];
+            document.getElementById('main-title').innerText = d.title;
+            document.getElementById('btn-settings').innerText = d.settings;
+            document.getElementById('modal-h-settings').innerText = d.settings;
+            document.getElementById('btn-credits').innerText = d.credits;
+            document.getElementById('modal-h-credits').innerText = d.credits;
             document.getElementById('lang').value = lang;
+
+            // Contenu des Crédits
+            document.getElementById('credits-content').innerHTML = `
+                <p>${d.desc}</p>
+                <p>${d.license}</p>
+                <p><b>${d.links}</b><br>
+                   • <a href="http://developers.google.com/blockly" target="_blank">Official Blockly</a><br>
+                   • <a href="https://github.com/RaspberryPiFoundation/blockly" target="_blank">Blockly Source</a><br>
+                   • <a href="https://github.com/Stormwindsky/EZcript" target="_blank">EZcript Repository</a>
+                </p>
+            `;
         }
 
         function toggleTheme() {
@@ -191,8 +258,8 @@
             applyGlobalSettings();
         }
 
-        function openModal() { document.getElementById('modal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         async function scanFiles() {
             const grid = document.getElementById('grid');
@@ -225,12 +292,11 @@
             card.innerHTML = `
                 <span>Service / ${folder}</span>
                 <h3>${name}</h3>
-                <p style="color:var(--primary); font-size:13px;">Launch Module →</p>
+                <p style="color:var(--primary); font-size:13px; font-weight:bold;">Launch Module →</p>
             `;
             grid.appendChild(card);
         }
 
-        // Init
         applyGlobalSettings();
         scanFiles();
     </script>
