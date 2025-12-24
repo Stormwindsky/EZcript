@@ -109,6 +109,7 @@ textarea {
   box-shadow: 0 20px 40px rgba(0,0,0,0.3);
   max-width: 400px;
   width: 90%;
+  position: relative;
 }
 .btn-group { display: flex; gap: 15px; }
 .btn-choice {
@@ -128,6 +129,19 @@ textarea {
 .btn-py { background: #3776ab; color: white; } /* Python Blue */
 .btn-ez { background: #ffd43b; color: #333; } /* Python Yellow */
 .btn-cancel { margin-top: 20px; background: transparent; color: #999; padding: 5px; font-weight: normal;}
+
+.close-x {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+}
+.close-x:hover { color: #ff5f56; }
+
+.error-modal .modal-content { border-top: 5px solid #ff5f56; }
 
 .controls-right { display: flex; gap: 10px; align-items: center; }
 select { padding: 5px; border-radius: 4px; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
@@ -176,6 +190,15 @@ select { padding: 5px; border-radius: 4px; background: var(--card-bg); color: va
   </div>
 </div>
 
+<div id="errorModal" class="modal-overlay error-modal">
+  <div class="modal-content">
+    <span class="close-x" onclick="closeErrorModal()">&times;</span>
+    <h3 style="color: #ff5f56;">Error</h3>
+    <p id="error-message"></p>
+    <button onclick="closeErrorModal()" style="background: #ff5f56; margin-top:10px;">OK</button>
+  </div>
+</div>
+
 <xml id="toolbox" style="display:none">
   <category name="Logic" colour="210">
     <block type="controls_if"></block>
@@ -213,7 +236,9 @@ const translations = {
         mDesc: "Choose your preferred format:",
         mPy: "Python script",
         mEz: "Editable blocks",
-        cancel: "Cancel"
+        cancel: "Cancel",
+        errFormat: "Incompatible format! Please provide a .ezpy link.",
+        errFetch: "Error loading the remote file."
     },
     fr: {
         open: "Ouvrir Projet (.ezpy)",
@@ -222,9 +247,18 @@ const translations = {
         mDesc: "Choisissez votre format préféré :",
         mPy: "Script Python",
         mEz: "Blocs modifiables",
-        cancel: "Annuler"
+        cancel: "Annuler",
+        errFormat: "Format incompatible ! Veuillez fournir un lien .ezpy.",
+        errFetch: "Erreur lors du chargement du fichier distant."
     }
 };
+
+function showError(msg) {
+    const lang = localStorage.getItem('ez_lang') || 'en';
+    document.getElementById('error-message').innerText = msg;
+    document.getElementById('errorModal').style.display = 'flex';
+}
+function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
 
 function applySettings() {
     const lang = localStorage.getItem('ez_lang') || 'en';
@@ -294,16 +328,42 @@ function loadEZpy(input) {
       const xml = Blockly.utils.xml.textToDom(e.target.result);
       Blockly.Xml.domToWorkspace(xml, workspace);
       document.getElementById('projectTitle').value = file.name.replace('.ezpy', '');
-    } catch (err) { alert("Error: Invalid .ezpy file"); }
+    } catch (err) { showError("Error: Invalid .ezpy file"); }
   };
   reader.readAsText(file);
   input.value = "";
 }
 
-window.onclick = (e) => { if (e.target == modal) closeModal(); }
+// URL LOADER
+window.addEventListener('load', () => {
+  applySettings();
+  const urlParams = window.location.search;
+  if (urlParams.startsWith('?=')) {
+    const fileUrl = decodeURIComponent(urlParams.substring(2));
+    const lang = localStorage.getItem('ez_lang') || 'en';
 
-// Init
-applySettings();
+    if (!fileUrl.toLowerCase().endsWith('.ezpy')) {
+        showError(translations[lang].errFormat);
+        return;
+    }
+
+    fetch(fileUrl)
+      .then(res => res.text())
+      .then(data => {
+        workspace.clear();
+        const xml = Blockly.utils.xml.textToDom(data);
+        Blockly.Xml.domToWorkspace(xml, workspace);
+        const name = fileUrl.split('/').pop().replace('.ezpy', '');
+        document.getElementById('projectTitle').value = name;
+      })
+      .catch(err => showError(translations[lang].errFetch));
+  }
+});
+
+window.onclick = (e) => { 
+    if (e.target == modal) closeModal(); 
+    if (e.target == document.getElementById('errorModal')) closeErrorModal();
+}
 </script>
 </body>
 </html>
