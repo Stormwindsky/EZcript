@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EZjson - Block to JSON</title>
+
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+<script src="https://unpkg.com/blockly/python_compressed"></script>
+
+<style>
+:root { --bg: #f0f2f5; --header-bg: #fff; --text: #333; --card-bg: #fff; --border: #ddd; }
+[data-theme="dark"] { --bg: #050505; --header-bg: #111; --text: #ffffff; --card-bg: #1a1a1a; --border: #333; }
+
+body { margin: 0; padding: 20px; background: var(--bg); color: var(--text); font-family: Arial, sans-serif; transition: background 0.3s; }
+header { background: var(--header-bg); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+.header-left { display: flex; align-items: center; gap: 10px; }
+button { background: #4a6cf7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+button:hover { background: #3653d1; }
+.btn-load { background: #e9ecef; color: #495057; }
+.container { display: flex; gap: 15px; margin-top: 20px; height: 75vh; }
+#blocklyDiv { flex: 2; background: #fff; border-radius: 8px; }
+textarea { flex: 1; background: #1e1e1e; color: #e6db74; border: none; padding: 15px; border-radius: 8px; font-family: Consolas, monospace; white-space: pre; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+.modal-content { background: var(--card-bg); color: var(--text); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%; }
+.btn-group { display: flex; gap: 15px; }
+.btn-choice { flex: 1; padding: 15px 10px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.btn-py { background: #cf6679; color: white; } 
+.btn-ez { background: #03dac6; color: #333; } 
+.btn-cancel { margin-top: 20px; background: transparent; color: #999; cursor: pointer; }
+
+input, select { padding: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--card-bg); color: var(--text); }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-left">
+    <strong id="brand-name">EZjson</strong>
+    <input id="projectTitle" style="width: 120px;" oninput="updateUI()">
+    <select id="projectLang" onchange="handleLangSelect(this.value)">
+        <option value="en">.en.json</option>
+        <option value="fr">.fr.json</option>
+        <option value="custom">Other...</option>
+    </select>
+    <button class="btn-load" id="btn-open" onclick="document.getElementById('fileInput').click()">Open (.ezjson)</button>
+    <input type="file" id="fileInput" style="display:none" accept=".ezjson" onchange="loadEZjson(this)">
+  </div>
+  <div class="controls-right">
+    <select id="uiLang" onchange="changeUILang(this.value)">
+        <option value="en">UI: EN</option>
+        <option value="fr">UI: FR</option>
+    </select>
+    <button id="theme-toggle" onclick="toggleTheme()" style="background: #222;">🌙</button>
+    <button id="btn-download" onclick="saveProject()">Download</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="blocklyDiv"></div>
+  <textarea id="output" readonly></textarea>
+</div>
+
+<div id="saveModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 id="modal-title">Export Project</h3>
+    <div class="btn-group">
+      <button class="btn-choice btn-py" onclick="downloadLogic('json')">
+        <span>.JSON</span>
+        <small id="small-py">Output</small>
+      </button>
+      <button class="btn-choice btn-ez" onclick="downloadLogic('ezjson')">
+        <span>.EZJSON</span>
+        <small id="small-ez">Blocks</small>
+      </button>
+    </div>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<xml id="toolbox" style="display:none">
+  <category name="Logic" colour="210"><block type="controls_if"></block><block type="logic_compare"></block></category>
+  <category name="Loops" colour="120"><block type="controls_repeat_ext"></block></category>
+  <category name="Math" colour="230"><block type="math_number"></block><block type="math_arithmetic"></block></category>
+  <category name="Text" colour="160"><block type="text"></block><block type="text_print"></block></category>
+  <category name="Variables" colour="330" custom="VARIABLE"></category>
+  <category name="Functions" colour="290" custom="PROCEDURE"></category>
+</xml>
+
+<script>
+const translations = {
+    en: { open: "Open (.ezjson)", download: "Download", mTitle: "Export Project", cancel: "Cancel", defaultName: "default name" },
+    fr: { open: "Ouvrir (.ezjson)", download: "Télécharger", mTitle: "Exporter le Projet", cancel: "Annuler", defaultName: "nom par défaut" }
+};
+
+let currentProjectLang = "en";
+
+function applySettings() {
+    const uiL = localStorage.getItem('ez_ui_lang') || 'en';
+    const theme = localStorage.getItem('ez_theme') || 'dark';
+    
+    document.getElementById('uiLang').value = uiL;
+    document.getElementById('btn-open').innerText = translations[uiL].open;
+    document.getElementById('btn-download').innerText = translations[uiL].download;
+    document.getElementById('modal-title').innerText = translations[uiL].mTitle;
+
+    if (!document.getElementById('projectTitle').value) {
+        document.getElementById('projectTitle').value = translations[uiL].defaultName;
+    }
+
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-toggle').innerText = theme === 'dark' ? "🌙" : "☀️";
+    updateUI();
+}
+
+function handleLangSelect(val) {
+    if (val === "custom") {
+        const custom = prompt("Enter language code (e.g. jp, es, de):", "jp");
+        if (custom) {
+            const select = document.getElementById('projectLang');
+            const opt = document.createElement('option');
+            opt.value = custom;
+            opt.text = "." + custom + ".json";
+            select.add(opt, select.options[select.options.length - 1]);
+            select.value = custom;
+            currentProjectLang = custom;
+        } else {
+            document.getElementById('projectLang').value = currentProjectLang;
+        }
+    } else {
+        currentProjectLang = val;
+    }
+    updateUI();
+}
+
+function changeUILang(l) {
+    localStorage.setItem('ez_ui_lang', l);
+    applySettings();
+}
+
+function toggleTheme() {
+    const next = (localStorage.getItem('ez_theme') || 'dark') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('ez_theme', next);
+    applySettings();
+}
+
+const workspace = Blockly.inject("blocklyDiv", { toolbox: document.getElementById('toolbox'), renderer: "geras" });
+
+function updateUI() {
+    const code = Blockly.Python.workspaceToCode(workspace);
+    const json = JSON.stringify({
+        project: document.getElementById('projectTitle').value,
+        lang: currentProjectLang,
+        content: code
+    }, null, 4);
+    document.getElementById('output').value = json;
+}
+
+workspace.addChangeListener(updateUI);
+
+const modal = document.getElementById('saveModal');
+function saveProject() { modal.style.display = 'flex'; }
+function closeModal() { modal.style.display = 'none'; }
+
+function downloadLogic(type) {
+    const name = document.getElementById('projectTitle').value;
+    const content = (type === 'json') ? document.getElementById('output').value : Blockly.Xml.domToPrettyText(Blockly.Xml.workspaceToDom(workspace));
+    const ext = (type === 'json') ? `.${currentProjectLang}.json` : ".ezjson";
+    
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+    a.download = name + ext;
+    a.click();
+    closeModal();
+}
+
+function loadEZjson(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        workspace.clear();
+        Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(e.target.result), workspace);
+        document.getElementById('projectTitle').value = file.name.replace('.ezjson', '');
+        updateUI();
+    };
+    reader.readAsText(file);
+}
+
+applySettings();
+</script>
+</body>
+</html>
