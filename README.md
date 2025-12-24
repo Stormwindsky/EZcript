@@ -14,3 +14,8 @@ https://github.com/RaspberryPiFoundation/blockly?tab=Apache-2.0-1-ov-file#readme
 Official Website of Blockly
 
 http://developers.google.com/blockly
+
+
+# Official template
+
+https://github.com/Stormwindsky/Template-EZcript-Projects
