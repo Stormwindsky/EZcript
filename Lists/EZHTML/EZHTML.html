@@ -7,19 +7,39 @@
 <script src="https://unpkg.com/blockly/blockly.min.js"></script>
 
 <style>
+/* Variables de thèmes */
+:root {
+  --bg: #f0f2f5;
+  --header-bg: #fff;
+  --text: #333;
+  --card-bg: #fff;
+  --border: #ddd;
+}
+
+[data-theme="dark"] {
+  --bg: #050505;
+  --header-bg: #111;
+  --text: #ffffff;
+  --card-bg: #1a1a1a;
+  --border: #333;
+}
+
 body {
   margin: 0;
   padding: 20px;
-  background: #f0f2f5;
+  background: var(--bg);
+  color: var(--text);
   font-family: Arial, sans-serif;
+  transition: background 0.3s;
 }
 header {
-  background: #fff;
+  background: var(--header-bg);
   padding: 15px;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--border);
 }
 .header-left {
   display: flex;
@@ -83,7 +103,8 @@ textarea {
   backdrop-filter: blur(5px);
 }
 .modal-content {
-  background: white;
+  background: var(--card-bg);
+  color: var(--text);
   padding: 30px;
   border-radius: 15px;
   text-align: center;
@@ -96,8 +117,6 @@ textarea {
   from { transform: scale(0.8); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
-.modal-content h3 { margin: 0 0 10px 0; color: #333; }
-.modal-content p { color: #666; margin-bottom: 25px; }
 .btn-group { display: flex; gap: 15px; }
 .btn-choice {
   flex: 1;
@@ -113,10 +132,12 @@ textarea {
   gap: 5px;
 }
 .btn-choice small { font-weight: normal; font-size: 0.75em; opacity: 0.8; }
-.btn-choice:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
 .btn-html { background: #4a6cf7; color: white; }
 .btn-ez { background: #2ecc71; color: white; }
 .btn-cancel { margin-top: 20px; background: transparent; color: #999; padding: 5px; font-weight: normal;}
+
+.controls-right { display: flex; gap: 10px; align-items: center; }
+select { padding: 5px; border-radius: 4px; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
 </style>
 </head>
 
@@ -124,12 +145,19 @@ textarea {
 
 <header>
   <div class="header-left">
-    <strong>EZHTML</strong>
+    <strong id="brand-name">EZHTML</strong>
     <input id="projectTitle" value="index" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; width: 80px;"> .html
-    <button class="btn-load" onclick="document.getElementById('fileInput').click()">Open Project (.ezhtml)</button>
+    <button class="btn-load" id="btn-open" onclick="document.getElementById('fileInput').click()">Open Project (.ezhtml)</button>
     <input type="file" id="fileInput" style="display:none" accept=".ezhtml" onchange="loadEZHTML(this)">
   </div>
-  <button onclick="saveHTML()">Download</button>
+  <div class="controls-right">
+    <select id="langSelect" onchange="changeLang(this.value)">
+        <option value="en">EN</option>
+        <option value="fr">FR</option>
+    </select>
+    <button id="theme-toggle" onclick="toggleTheme()" style="background: #222;">🌙</button>
+    <button id="btn-download" onclick="saveHTML()">Download</button>
+  </div>
 </header>
 
 <div class="container">
@@ -139,19 +167,19 @@ textarea {
 
 <div id="saveModal" class="modal-overlay">
   <div class="modal-content">
-    <h3>Export Project</h3>
-    <p>Choose your preferred format:</p>
+    <h3 id="modal-title">Export Project</h3>
+    <p id="modal-desc">Choose your preferred format:</p>
     <div class="btn-group">
       <button class="btn-choice btn-html" onclick="downloadLogic('html')">
         <span>.HTML File</span>
-        <small>Web-ready code</small>
+        <small id="small-html">Web-ready code</small>
       </button>
       <button class="btn-choice btn-ez" onclick="downloadLogic('ezhtml')">
         <span>.EZHTML File</span>
-        <small>Editable blocks</small>
+        <small id="small-ez">Editable blocks</small>
       </button>
     </div>
-    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+    <button class="btn-cancel" id="btn-close-modal" onclick="closeModal()">Cancel</button>
   </div>
 </div>
 
@@ -183,142 +211,80 @@ textarea {
 </xml>
 
 <script>
-/* ===== UTILITY ===== */
-function cleanText(v) {
-  if (!v) return "";
-  return v.replace(/^["']|["']$/g, "");
+/* ===== SYNCHRONISATION & LANGUES ===== */
+const translations = {
+    en: {
+        open: "Open Project (.ezhtml)",
+        download: "Download",
+        mTitle: "Export Project",
+        mDesc: "Choose your preferred format:",
+        mHtml: "Web-ready code",
+        mEz: "Editable blocks",
+        cancel: "Cancel"
+    },
+    fr: {
+        open: "Ouvrir Projet (.ezhtml)",
+        download: "Télécharger",
+        mTitle: "Exporter le Projet",
+        mDesc: "Choisissez votre format préféré :",
+        mHtml: "Code prêt pour le Web",
+        mEz: "Blocs modifiables",
+        cancel: "Annuler"
+    }
+};
+
+function applySettings() {
+    const lang = localStorage.getItem('ez_lang') || 'en';
+    const theme = localStorage.getItem('ez_theme') || 'dark';
+    
+    // Appliquer Langue
+    document.getElementById('langSelect').value = lang;
+    document.getElementById('btn-open').innerText = translations[lang].open;
+    document.getElementById('btn-download').innerText = translations[lang].download;
+    document.getElementById('modal-title').innerText = translations[lang].mTitle;
+    document.getElementById('modal-desc').innerText = translations[lang].mDesc;
+    document.getElementById('small-html').innerText = translations[lang].mHtml;
+    document.getElementById('small-ez').innerText = translations[lang].mEz;
+    document.getElementById('btn-close-modal').innerText = translations[lang].cancel;
+
+    // Appliquer Thème
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-toggle').innerText = theme === 'dark' ? "🌙" : "☀️";
 }
 
-/* ===== COLOUR PICKER ===== */
-Blockly.defineBlocksWithJsonArray([{
-    "type": "colour_picker",
-    "message0": "color %1",
-    "args0": [{ "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }],
-    "output": "String",
-    "colour": 20
-}]);
+function changeLang(l) {
+    localStorage.setItem('ez_lang', l);
+    applySettings();
+}
 
-/* ===== HTML BLOCKS ===== */
-Blockly.Blocks['html_main'] = {
-  init() {
-    this.appendStatementInput("HEAD").appendField("HEAD");
-    this.appendStatementInput("BODY").appendField("BODY");
-    this.setColour(260);
-  }
-};
-Blockly.Blocks['html_div'] = {
-  init() {
-    this.appendStatementInput("CONTENT").appendField("DIV");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(210);
-  }
-};
-Blockly.Blocks['html_hn'] = {
-  init() {
-    this.appendValueInput("TEXT")
-        .appendField("H")
-        .appendField(new Blockly.FieldDropdown([["1","1"], ["2","2"], ["3","3"], ["4","4"], ["5","5"], ["6","6"]]), "LEVEL");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(120);
-  }
-};
-Blockly.Blocks['html_p'] = {
-  init() {
-    this.appendValueInput("TEXT").appendField("Paragraph");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(160);
-  }
-};
-Blockly.Blocks['html_br'] = {
-  init() {
-    this.appendDummyInput().appendField("Line Break <br>");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(160);
-  }
-};
-Blockly.Blocks['html_img'] = {
-  init() {
-    this.appendDummyInput()
-        .appendField("Image URL:")
-        .appendField(new Blockly.FieldTextInput("https://upload.wikimedia.org/wikipedia/commons/2/2e/Pi_unrolled_cc0.gif"), "SRC");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(210);
-  }
-};
-Blockly.Blocks['html_iframe'] = {
-  init() {
-    this.appendDummyInput()
-        .appendField("Iframe URL:")
-        .appendField(new Blockly.FieldTextInput("https://en.wikipedia.org/wiki/Wikipedia"), "SRC");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(210);
-  }
-};
-Blockly.Blocks['custom_tag'] = {
-  init() {
-    this.appendDummyInput()
-        .appendField("Custom Tag <")
-        .appendField(new Blockly.FieldTextInput("section"), "TAG")
-        .appendField(">");
-    this.appendStatementInput("CONTENT");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(290);
-  }
-};
-Blockly.Blocks['html_style'] = {
-  init() {
-    this.appendStatementInput("RULES").appendField("STYLE");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(20);
-  }
-};
-Blockly.Blocks['css_bg'] = {
-  init() {
-    this.appendValueInput("COLOR").appendField("Body background");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(20);
-  }
-};
-Blockly.Blocks['html_script'] = {
-  init() {
-    this.appendStatementInput("CODE").appendField("SCRIPT");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(60);
-  }
-};
-Blockly.Blocks['js_alert'] = {
-  init() {
-    this.appendValueInput("TEXT").appendField("Alert");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(60);
-  }
-};
+function toggleTheme() {
+    const current = localStorage.getItem('ez_theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('ez_theme', next);
+    applySettings();
+}
 
-/* ===== GENERATOR ===== */
+/* ===== BLOCKLY LOGIC (UNCHANGED) ===== */
+function cleanText(v) { if (!v) return ""; return v.replace(/^["']|["']$/g, ""); }
+Blockly.defineBlocksWithJsonArray([{"type": "colour_picker","message0": "color %1","args0": [{ "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }],"output": "String","colour": 20}]);
+Blockly.Blocks['html_main'] = { init() { this.appendStatementInput("HEAD").appendField("HEAD"); this.appendStatementInput("BODY").appendField("BODY"); this.setColour(260); } };
+Blockly.Blocks['html_div'] = { init() { this.appendStatementInput("CONTENT").appendField("DIV"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
+Blockly.Blocks['html_hn'] = { init() { this.appendValueInput("TEXT").appendField("H").appendField(new Blockly.FieldDropdown([["1","1"], ["2","2"], ["3","3"], ["4","4"], ["5","5"], ["6","6"]]), "LEVEL"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(120); } };
+Blockly.Blocks['html_p'] = { init() { this.appendValueInput("TEXT").appendField("Paragraph"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
+Blockly.Blocks['html_br'] = { init() { this.appendDummyInput().appendField("Line Break <br>"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(160); } };
+Blockly.Blocks['html_img'] = { init() { this.appendDummyInput().appendField("Image URL:").appendField(new Blockly.FieldTextInput("https://upload.wikimedia.org/wikipedia/commons/2/2e/Pi_unrolled_cc0.gif"), "SRC"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
+Blockly.Blocks['html_iframe'] = { init() { this.appendDummyInput().appendField("Iframe URL:").appendField(new Blockly.FieldTextInput("https://en.wikipedia.org/wiki/Wikipedia"), "SRC"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(210); } };
+Blockly.Blocks['custom_tag'] = { init() { this.appendDummyInput().appendField("Custom Tag <").appendField(new Blockly.FieldTextInput("section"), "TAG").appendField(">"); this.appendStatementInput("CONTENT"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(290); } };
+Blockly.Blocks['html_style'] = { init() { this.appendStatementInput("RULES").appendField("STYLE"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(20); } };
+Blockly.Blocks['css_bg'] = { init() { this.appendValueInput("COLOR").appendField("Body background"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(20); } };
+Blockly.Blocks['html_script'] = { init() { this.appendStatementInput("CODE").appendField("SCRIPT"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(60); } };
+Blockly.Blocks['js_alert'] = { init() { this.appendValueInput("TEXT").appendField("Alert"); this.setPreviousStatement(true); this.setNextStatement(true); this.setColour(60); } };
+
 const GEN = new Blockly.Generator("GEN");
-GEN.scrub_ = function(block, code, opt_thisOnly) {
-  const nextBlock = block.getNextBlock();
-  const nextCode = (nextBlock && !opt_thisOnly) ? GEN.blockToCode(nextBlock) : '';
-  return code + nextCode;
-};
+GEN.scrub_ = function(block, code, opt_thisOnly) { const nextBlock = block.getNextBlock(); const nextCode = (nextBlock && !opt_thisOnly) ? GEN.blockToCode(nextBlock) : ''; return code + nextCode; };
 GEN.forBlock['html_main'] = (b, g) => `<!DOCTYPE html>\n<html>\n<head>\n${g.statementToCode(b, "HEAD")}</head>\n<body>\n${g.statementToCode(b, "BODY")}</body>\n</html>`;
 GEN.forBlock['html_div'] = (b, g) => `<div>\n${g.statementToCode(b, "CONTENT")}</div>\n`;
-GEN.forBlock['html_hn'] = b => {
-  const level = b.getFieldValue('LEVEL');
-  const text = cleanText(GEN.valueToCode(b, "TEXT", 0));
-  return `<h${level}>${text}</h${level}>\n`;
-};
+GEN.forBlock['html_hn'] = b => { const level = b.getFieldValue('LEVEL'); const text = cleanText(GEN.valueToCode(b, "TEXT", 0)); return `<h${level}>${text}</h${level}>\n`; };
 GEN.forBlock['html_p'] = b => `<p>${cleanText(GEN.valueToCode(b, "TEXT", 0))}</p>\n`;
 GEN.forBlock['html_br'] = b => `<br>\n`;
 GEN.forBlock['html_img'] = b => `<img src="${b.getFieldValue('SRC')}" style="max-width:100%;">\n`;
@@ -331,25 +297,12 @@ GEN.forBlock['js_alert'] = b => `alert("${cleanText(GEN.valueToCode(b, "TEXT", 0
 GEN.forBlock['text'] = b => [`"${b.getFieldValue("TEXT")}"`, 0];
 GEN.forBlock['colour_picker'] = b => [`"${b.getFieldValue("COLOUR")}"`, 0];
 
-/* ===== WORKSPACE ===== */
-const workspace = Blockly.inject("blocklyDiv", {
-  toolbox: toolbox,
-  renderer: "geras",
-  trashcan: true,
-  grid: { spacing: 20, length: 3, colour: "#ccc", snap: true }
-});
+const workspace = Blockly.inject("blocklyDiv", { toolbox: toolbox, renderer: "geras", trashcan: true, grid: { spacing: 20, length: 3, colour: "#ccc", snap: true } });
+workspace.addChangeListener(() => { GEN.init(workspace); document.getElementById('output').value = GEN.workspaceToCode(workspace); });
 
-workspace.addChangeListener(() => {
-  GEN.init(workspace);
-  document.getElementById('output').value = GEN.workspaceToCode(workspace);
-});
-
-/* ===== SAVE/LOAD LOGIC ===== */
 const modal = document.getElementById('saveModal');
-
 function saveHTML() { modal.style.display = 'flex'; }
 function closeModal() { modal.style.display = 'none'; }
-
 function downloadLogic(type) {
   const name = document.getElementById('projectTitle').value || "index";
   let content = (type === 'html') ? document.getElementById('output').value : Blockly.Xml.domToPrettyText(Blockly.Xml.workspaceToDom(workspace));
@@ -360,7 +313,6 @@ function downloadLogic(type) {
   a.click();
   closeModal();
 }
-
 function loadEZHTML(input) {
   const file = input.files[0];
   if (!file) return;
@@ -371,16 +323,15 @@ function loadEZHTML(input) {
       const xml = Blockly.utils.xml.textToDom(e.target.result);
       Blockly.Xml.domToWorkspace(xml, workspace);
       document.getElementById('projectTitle').value = file.name.replace('.ezhtml', '');
-    } catch (err) {
-      alert("Error: Invalid .ezhtml file");
-    }
+    } catch (err) { alert("Error: Invalid .ezhtml file"); }
   };
   reader.readAsText(file);
-  input.value = ""; // Reset input
+  input.value = "";
 }
-
 window.onclick = (e) => { if (e.target == modal) closeModal(); }
-</script>
 
+// Initialisation au chargement
+applySettings();
+</script>
 </body>
 </html>
