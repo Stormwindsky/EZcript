@@ -22,12 +22,24 @@ button:hover { background: #3653d1; }
 textarea { flex: 1; background: #1e1e1e; color: #e6db74; border: none; padding: 15px; border-radius: 8px; font-family: Consolas, monospace; white-space: pre; }
 
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
-.modal-content { background: var(--card-bg); color: var(--text); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%; }
+.modal-content { background: var(--card-bg); color: var(--text); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%; position: relative; }
 .btn-group { display: flex; gap: 15px; }
 .btn-choice { flex: 1; padding: 15px 10px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .btn-py { background: #cf6679; color: white; } 
 .btn-ez { background: #03dac6; color: #333; } 
 .btn-cancel { margin-top: 20px; background: transparent; color: #999; cursor: pointer; }
+
+.close-x {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+  line-height: 1;
+}
+.close-x:hover { color: #ff5f56; }
+.error-modal .modal-content { border-top: 5px solid #ff5f56; }
 
 input, select { padding: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--card-bg); color: var(--text); }
 </style>
@@ -79,6 +91,15 @@ input, select { padding: 5px; border: 1px solid var(--border); border-radius: 4p
   </div>
 </div>
 
+<div id="errorModal" class="modal-overlay error-modal">
+  <div class="modal-content">
+    <span class="close-x" onclick="closeErrorModal()">&times;</span>
+    <h3 style="color: #ff5f56;">Error</h3>
+    <p id="error-message"></p>
+    <button onclick="closeErrorModal()" style="background: #ff5f56; margin-top:10px;">OK</button>
+  </div>
+</div>
+
 <xml id="toolbox" style="display:none">
   <category name="Logic" colour="210"><block type="controls_if"></block><block type="logic_compare"></block></category>
   <category name="Loops" colour="120"><block type="controls_repeat_ext"></block></category>
@@ -90,11 +111,18 @@ input, select { padding: 5px; border: 1px solid var(--border); border-radius: 4p
 
 <script>
 const translations = {
-    en: { open: "Open (.ezjson)", download: "Download", mTitle: "Export Project", cancel: "Cancel", defaultName: "default name" },
-    fr: { open: "Ouvrir (.ezjson)", download: "Télécharger", mTitle: "Exporter le Projet", cancel: "Annuler", defaultName: "nom par défaut" }
+    en: { open: "Open (.ezjson)", download: "Download", mTitle: "Export Project", cancel: "Cancel", defaultName: "default name", errFormat: "Incompatible format! Please provide a .ezjson link.", errFetch: "Error loading the remote file." },
+    fr: { open: "Ouvrir (.ezjson)", download: "Télécharger", mTitle: "Exporter le Projet", cancel: "Annuler", defaultName: "nom par défaut", errFormat: "Format incompatible ! Veuillez fournir un lien .ezjson.", errFetch: "Erreur lors du chargement du fichier distant." }
 };
 
 let currentProjectLang = "en";
+
+function showError(msg) {
+    const uiL = localStorage.getItem('ez_ui_lang') || 'en';
+    document.getElementById('error-message').innerText = msg;
+    document.getElementById('errorModal').style.display = 'flex';
+}
+function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
 
 function applySettings() {
     const uiL = localStorage.getItem('ez_ui_lang') || 'en';
@@ -188,7 +216,36 @@ function loadEZjson(input) {
     reader.readAsText(file);
 }
 
-applySettings();
+// URL LOADER
+window.addEventListener('load', () => {
+    applySettings();
+    const urlParams = window.location.search;
+    if (urlParams.startsWith('?=')) {
+        const fileUrl = decodeURIComponent(urlParams.substring(2));
+        const uiL = localStorage.getItem('ez_ui_lang') || 'en';
+
+        if (!fileUrl.toLowerCase().endsWith('.ezjson')) {
+            showError(translations[uiL].errFormat);
+            return;
+        }
+
+        fetch(fileUrl)
+            .then(res => res.text())
+            .then(data => {
+                workspace.clear();
+                Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(data), workspace);
+                const name = fileUrl.split('/').pop().replace('.ezjson', '');
+                document.getElementById('projectTitle').value = name;
+                updateUI();
+            })
+            .catch(err => showError(translations[uiL].errFetch));
+    }
+});
+
+window.onclick = (e) => { 
+    if (e.target == modal) closeModal(); 
+    if (e.target == document.getElementById('errorModal')) closeErrorModal();
+}
 </script>
 </body>
 </html>
