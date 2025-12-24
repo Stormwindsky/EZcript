@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EZpy - Python Blocks</title>
+
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+<script src="https://unpkg.com/blockly/python_compressed"></script>
+
+<style>
+/* Variables de thèmes */
+:root {
+  --bg: #f0f2f5;
+  --header-bg: #fff;
+  --text: #333;
+  --card-bg: #fff;
+  --border: #ddd;
+}
+
+[data-theme="dark"] {
+  --bg: #050505;
+  --header-bg: #111;
+  --text: #ffffff;
+  --card-bg: #1a1a1a;
+  --border: #333;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  transition: background 0.3s;
+}
+header {
+  background: var(--header-bg);
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+button {
+  background: #4a6cf7;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover {
+  background: #3653d1;
+}
+.btn-load {
+  background: #e9ecef;
+  color: #495057;
+}
+.btn-load:hover {
+  background: #dee2e6;
+}
+.container {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  height: 75vh;
+}
+#blocklyDiv {
+  flex: 2;
+  background: #fff;
+  border-radius: 8px;
+}
+textarea {
+  flex: 1;
+  background: #1e1e1e;
+  color: #a6e22e; /* Vert Python-style */
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: Consolas, monospace;
+  white-space: pre;
+}
+
+/* --- MODAL POPUP STYLES --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+.modal-content {
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  max-width: 400px;
+  width: 90%;
+}
+.btn-group { display: flex; gap: 15px; }
+.btn-choice {
+  flex: 1;
+  padding: 15px 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.btn-choice small { font-weight: normal; font-size: 0.75em; opacity: 0.8; }
+.btn-py { background: #3776ab; color: white; } /* Python Blue */
+.btn-ez { background: #ffd43b; color: #333; } /* Python Yellow */
+.btn-cancel { margin-top: 20px; background: transparent; color: #999; padding: 5px; font-weight: normal;}
+
+.controls-right { display: flex; gap: 10px; align-items: center; }
+select { padding: 5px; border-radius: 4px; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-left">
+    <strong id="brand-name">EZpy</strong>
+    <input id="projectTitle" value="main" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; width: 100px;"> .py
+    <button class="btn-load" id="btn-open" onclick="document.getElementById('fileInput').click()">Open Project (.ezpy)</button>
+    <input type="file" id="fileInput" style="display:none" accept=".ezpy" onchange="loadEZpy(this)">
+  </div>
+  <div class="controls-right">
+    <select id="langSelect" onchange="changeLang(this.value)">
+        <option value="en">EN</option>
+        <option value="fr">FR</option>
+    </select>
+    <button id="theme-toggle" onclick="toggleTheme()" style="background: #222;">🌙</button>
+    <button id="btn-download" onclick="saveProject()">Download</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="blocklyDiv"></div>
+  <textarea id="output" readonly></textarea>
+</div>
+
+<div id="saveModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 id="modal-title">Export Project</h3>
+    <p id="modal-desc">Choose your preferred format:</p>
+    <div class="btn-group">
+      <button class="btn-choice btn-py" onclick="downloadLogic('py')">
+        <span>.PY File</span>
+        <small id="small-py">Python script</small>
+      </button>
+      <button class="btn-choice btn-ez" onclick="downloadLogic('ezpy')">
+        <span>.EZPY File</span>
+        <small id="small-ez">Editable blocks</small>
+      </button>
+    </div>
+    <button class="btn-cancel" id="btn-close-modal" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<xml id="toolbox" style="display:none">
+  <category name="Logic" colour="210">
+    <block type="controls_if"></block>
+    <block type="logic_compare"></block>
+    <block type="logic_operation"></block>
+    <block type="logic_boolean"></block>
+  </category>
+  <category name="Loops" colour="120">
+    <block type="controls_repeat_ext">
+      <value name="TIMES"><block type="math_number"><field name="NUM">10</field></block></value>
+    </block>
+    <block type="controls_whileUntil"></block>
+    <block type="controls_for"></block>
+  </category>
+  <category name="Math" colour="230">
+    <block type="math_number"></block>
+    <block type="math_arithmetic"></block>
+  </category>
+  <category name="Text" colour="160">
+    <block type="text"></block>
+    <block type="text_print"></block>
+    <block type="text_prompt_ext"></block>
+  </category>
+  <category name="Variables" colour="330" custom="VARIABLE"></category>
+  <category name="Functions" colour="290" custom="PROCEDURE"></category>
+</xml>
+
+<script>
+/* ===== SYNCHRONISATION & LANGUES ===== */
+const translations = {
+    en: {
+        open: "Open Project (.ezpy)",
+        download: "Download",
+        mTitle: "Export Project",
+        mDesc: "Choose your preferred format:",
+        mPy: "Python script",
+        mEz: "Editable blocks",
+        cancel: "Cancel"
+    },
+    fr: {
+        open: "Ouvrir Projet (.ezpy)",
+        download: "Télécharger",
+        mTitle: "Exporter le Projet",
+        mDesc: "Choisissez votre format préféré :",
+        mPy: "Script Python",
+        mEz: "Blocs modifiables",
+        cancel: "Annuler"
+    }
+};
+
+function applySettings() {
+    const lang = localStorage.getItem('ez_lang') || 'en';
+    const theme = localStorage.getItem('ez_theme') || 'dark';
+    
+    document.getElementById('langSelect').value = lang;
+    document.getElementById('btn-open').innerText = translations[lang].open;
+    document.getElementById('btn-download').innerText = translations[lang].download;
+    document.getElementById('modal-title').innerText = translations[lang].mTitle;
+    document.getElementById('modal-desc').innerText = translations[lang].mDesc;
+    document.getElementById('small-py').innerText = (lang === 'fr') ? translations.fr.mPy : translations.en.mPy;
+    document.getElementById('small-ez').innerText = translations[lang].mEz;
+    document.getElementById('btn-close-modal').innerText = translations[lang].cancel;
+
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-toggle').innerText = theme === 'dark' ? "🌙" : "☀️";
+}
+
+function changeLang(l) {
+    localStorage.setItem('ez_lang', l);
+    applySettings();
+}
+
+function toggleTheme() {
+    const current = localStorage.getItem('ez_theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('ez_theme', next);
+    applySettings();
+}
+
+/* ===== BLOCKLY SETUP ===== */
+const workspace = Blockly.inject("blocklyDiv", { 
+    toolbox: document.getElementById('toolbox'), 
+    renderer: "geras", 
+    trashcan: true, 
+    grid: { spacing: 20, length: 3, colour: "#ccc", snap: true } 
+});
+
+workspace.addChangeListener(() => { 
+    const code = Blockly.Python.workspaceToCode(workspace);
+    document.getElementById('output').value = code; 
+});
+
+/* ===== SAVE & LOAD LOGIC ===== */
+const modal = document.getElementById('saveModal');
+function saveProject() { modal.style.display = 'flex'; }
+function closeModal() { modal.style.display = 'none'; }
+
+function downloadLogic(type) {
+  const name = document.getElementById('projectTitle').value || "main";
+  let content = (type === 'py') ? document.getElementById('output').value : Blockly.Xml.domToPrettyText(Blockly.Xml.workspaceToDom(workspace));
+  const blob = new Blob([content], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name + (type === 'py' ? ".py" : ".ezpy");
+  a.click();
+  closeModal();
+}
+
+function loadEZpy(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      workspace.clear();
+      const xml = Blockly.utils.xml.textToDom(e.target.result);
+      Blockly.Xml.domToWorkspace(xml, workspace);
+      document.getElementById('projectTitle').value = file.name.replace('.ezpy', '');
+    } catch (err) { alert("Error: Invalid .ezpy file"); }
+  };
+  reader.readAsText(file);
+  input.value = "";
+}
+
+window.onclick = (e) => { if (e.target == modal) closeModal(); }
+
+// Init
+applySettings();
+</script>
+</body>
+</html>
