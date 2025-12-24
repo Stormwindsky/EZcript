@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EZerscript - Userscript Builder</title>
+
+<script src="https://unpkg.com/blockly/blockly.min.js"></script>
+
+<style>
+/* Variables de thèmes */
+:root {
+  --bg: #f0f2f5;
+  --header-bg: #fff;
+  --text: #333;
+  --card-bg: #fff;
+  --border: #ddd;
+}
+
+[data-theme="dark"] {
+  --bg: #050505;
+  --header-bg: #111;
+  --text: #ffffff;
+  --card-bg: #1a1a1a;
+  --border: #333;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background 0.3s;
+}
+header {
+  background: var(--header-bg);
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+button {
+  background: #4a6cf7;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover {
+  background: #3653d1;
+}
+.btn-load {
+  background: #e9ecef;
+  color: #495057;
+}
+.btn-load:hover {
+  background: #dee2e6;
+}
+.container {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  height: 75vh;
+}
+#blocklyDiv {
+  flex: 2;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+textarea {
+  flex: 1;
+  background: #1e1e1e;
+  color: #a6e22e;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  resize: none;
+}
+
+/* --- MODAL POPUP STYLES --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+.modal-content {
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  max-width: 400px;
+  width: 90%;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.btn-group { display: flex; gap: 15px; }
+.btn-choice {
+  flex: 1;
+  padding: 15px 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.btn-choice small { font-weight: normal; font-size: 0.75em; opacity: 0.8; }
+.btn-js { background: #f1c40f; color: #000; }
+.btn-ez { background: #9b59b6; color: white; }
+.btn-cancel { margin-top: 20px; background: transparent; color: #999; padding: 5px; font-weight: normal;}
+
+.controls-right { display: flex; gap: 10px; align-items: center; }
+select { padding: 5px; border-radius: 4px; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-left">
+    <strong id="brand-name" style="color:#9b59b6; font-size: 1.2em;">EZerscript</strong>
+    <input id="projectTitle" value="myscript" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px; width: 120px;"> .user.js
+    <button class="btn-load" id="btn-open" onclick="document.getElementById('fileInput').click()">Open Project (.ezerjs)</button>
+    <input type="file" id="fileInput" style="display:none" accept=".ezerjs" onchange="loadEZHTML(this)">
+  </div>
+  <div class="controls-right">
+    <select id="langSelect" onchange="changeLang(this.value)">
+        <option value="en">EN</option>
+        <option value="fr">FR</option>
+    </select>
+    <button id="theme-toggle" onclick="toggleTheme()" style="background: #222;">🌙</button>
+    <button id="btn-download" onclick="saveHTML()">Download</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="blocklyDiv"></div>
+  <textarea id="output" readonly></textarea>
+</div>
+
+<div id="saveModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 id="modal-title">Export Script</h3>
+    <p id="modal-desc">Choose your preferred format:</p>
+    <div class="btn-group">
+      <button class="btn-choice btn-js" onclick="downloadLogic('js')">
+        <span>.user.js File</span>
+        <small id="small-html">Install in Violentmonkey</small>
+      </button>
+      <button class="btn-choice btn-ez" onclick="downloadLogic('ezerjs')">
+        <span>.ezerjs File</span>
+        <small id="small-ez">Editable blocks</small>
+      </button>
+    </div>
+    <button class="btn-cancel" id="btn-close-modal" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<div id="errorModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="color: #ff5f56;">Error</h3>
+    <p id="error-message"></p>
+    <button onclick="closeErrorModal()" style="background: #ff5f56; margin-top:10px;">OK</button>
+  </div>
+</div>
+
+<xml id="toolbox" style="display:none">
+  <category name="Metadata" colour="290">
+    <block type="vm_metadata"></block>
+  </category>
+  <category name="Actions" colour="120">
+    <block type="js_alert"></block>
+    <block type="js_console"></block>
+    <block type="js_reload"></block>
+  </category>
+  <category name="DOM" colour="210">
+    <block type="js_body_bg"></block>
+    <block type="js_hide_element"></block>
+  </category>
+  <category name="Logic" colour="210">
+    <block type="controls_if"></block>
+  </category>
+  <category name="Values" colour="160">
+    <block type="text"></block>
+    <block type="colour_picker"></block>
+  </category>
+</xml>
+
+<script>
+/* ===== SYNCHRONISATION & LANGUES ===== */
+const translations = {
+    en: {
+        open: "Open Project (.ezerjs)",
+        download: "Download",
+        mTitle: "Export Script",
+        mDesc: "Choose your preferred format:",
+        mHtml: "Install in Violentmonkey",
+        mEz: "Editable blocks",
+        cancel: "Cancel",
+        errFormat: "Incompatible format! Please provide a .ezerjs file.",
+        errFetch: "Error loading the remote file."
+    },
+    fr: {
+        open: "Ouvrir Projet (.ezerjs)",
+        download: "Télécharger",
+        mTitle: "Exporter le Script",
+        mDesc: "Choisissez votre format préféré :",
+        mHtml: "Installer dans Violentmonkey",
+        mEz: "Blocs modifiables",
+        cancel: "Annuler",
+        errFormat: "Format incompatible ! Veuillez fournir un fichier .ezerjs.",
+        errFetch: "Erreur lors du chargement du fichier distant."
+    }
+};
+
+function showError(msg) {
+    document.getElementById('error-message').innerText = msg;
+    document.getElementById('errorModal').style.display = 'flex';
+}
+function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
+
+function applySettings() {
+    const lang = localStorage.getItem('ez_lang') || 'en';
+    const theme = localStorage.getItem('ez_theme') || 'dark';
+    
+    document.getElementById('langSelect').value = lang;
+    document.getElementById('btn-open').innerText = translations[lang].open;
+    document.getElementById('btn-download').innerText = translations[lang].download;
+    document.getElementById('modal-title').innerText = translations[lang].mTitle;
+    document.getElementById('modal-desc').innerText = translations[lang].mDesc;
+    document.getElementById('small-html').innerText = translations[lang].mHtml;
+    document.getElementById('small-ez').innerText = translations[lang].mEz;
+    document.getElementById('btn-close-modal').innerText = translations[lang].cancel;
+
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-toggle').innerText = theme === 'dark' ? "🌙" : "☀️";
+}
+
+function changeLang(l) { localStorage.setItem('ez_lang', l); applySettings(); }
+function toggleTheme() {
+    const current = localStorage.getItem('ez_theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('ez_theme', next);
+    applySettings();
+}
+
+/* ===== BLOCKLY LOGIC (EZerscript) ===== */
+function cleanText(v) { if (!v) return ""; return v.replace(/^["']|["']$/g, ""); }
+
+// Blocks Definitions
+Blockly.defineBlocksWithJsonArray([
+  { "type": "colour_picker", "message0": "color %1", "args0": [{ "type": "field_colour", "name": "COLOUR", "colour": "#ff0000" }], "output": "String", "colour": 160 },
+  {
+    "type": "vm_metadata",
+    "message0": "Script Name %1 Match URL %2",
+    "args0": [
+      { "type": "field_input", "name": "NAME", "text": "My Script" },
+      { "type": "field_input", "name": "MATCH", "text": "*://*/*" }
+    ],
+    "message1": "Code %1",
+    "args1": [{ "type": "input_statement", "name": "CODE" }],
+    "colour": 290
+  },
+  {
+    "type": "js_alert",
+    "message0": "Alert %1",
+    "args0": [{ "type": "input_value", "name": "TEXT" }],
+    "previousStatement": null, "nextStatement": null, "colour": 120
+  },
+  {
+    "type": "js_console",
+    "message0": "Log to Console %1",
+    "args0": [{ "type": "input_value", "name": "TEXT" }],
+    "previousStatement": null, "nextStatement": null, "colour": 120
+  },
+  {
+    "type": "js_reload",
+    "message0": "Reload Page",
+    "previousStatement": null, "nextStatement": null, "colour": 120
+  },
+  {
+    "type": "js_body_bg",
+    "message0": "Change Page Background %1",
+    "args0": [{ "type": "input_value", "name": "COLOR" }],
+    "previousStatement": null, "nextStatement": null, "colour": 210
+  },
+  {
+    "type": "js_hide_element",
+    "message0": "Hide CSS Selector %1",
+    "args0": [{ "type": "field_input", "name": "SELECTOR", "text": ".ads" }],
+    "previousStatement": null, "nextStatement": null, "colour": 210
+  }
+]);
+
+const GEN = new Blockly.Generator("GEN");
+GEN.scrub_ = function(block, code, opt_thisOnly) { const nextBlock = block.getNextBlock(); const nextCode = (nextBlock && !opt_thisOnly) ? GEN.blockToCode(nextBlock) : ''; return code + nextCode; };
+
+GEN.forBlock['vm_metadata'] = (b, g) => {
+  const name = b.getFieldValue('NAME');
+  const match = b.getFieldValue('MATCH');
+  const code = g.statementToCode(b, "CODE");
+  return `// ==UserScript==\n// @name         ${name}\n// @match        ${match}\n// @grant        none\n// ==/UserScript==\n\n(function() {\n    'use strict';\n${code}\n})();`;
+};
+GEN.forBlock['js_alert'] = b => `alert(${GEN.valueToCode(b, "TEXT", 0) || '""'});\n`;
+GEN.forBlock['js_console'] = b => `console.log(${GEN.valueToCode(b, "TEXT", 0) || '""'});\n`;
+GEN.forBlock['js_reload'] = b => `location.reload();\n`;
+GEN.forBlock['js_body_bg'] = b => `document.body.style.background = ${GEN.valueToCode(b, "COLOR", 0)};\n`;
+GEN.forBlock['js_hide_element'] = b => `document.querySelector("${b.getFieldValue('SELECTOR')}").style.display = 'none';\n`;
+GEN.forBlock['text'] = b => [`"${b.getFieldValue("TEXT")}"`, 0];
+GEN.forBlock['colour_picker'] = b => [`"${b.getFieldValue("COLOUR")}"`, 0];
+
+const workspace = Blockly.inject("blocklyDiv", { toolbox: toolbox, renderer: "geras", trashcan: true, grid: { spacing: 20, length: 3, colour: "#ccc", snap: true } });
+workspace.addChangeListener(() => { GEN.init(workspace); document.getElementById('output').value = GEN.workspaceToCode(workspace); });
+
+const modal = document.getElementById('saveModal');
+function saveHTML() { modal.style.display = 'flex'; }
+function closeModal() { modal.style.display = 'none'; }
+
+function downloadLogic(type) {
+  const name = document.getElementById('projectTitle').value || "script";
+  let content = (type === 'js') ? document.getElementById('output').value : Blockly.Xml.domToPrettyText(Blockly.Xml.workspaceToDom(workspace));
+  const blob = new Blob([content], { type: "text/javascript" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name + (type === 'js' ? ".user.js" : ".ezerjs");
+  a.click();
+  closeModal();
+}
+
+function loadEZHTML(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      workspace.clear();
+      const xml = Blockly.utils.xml.textToDom(e.target.result);
+      Blockly.Xml.domToWorkspace(xml, workspace);
+      document.getElementById('projectTitle').value = file.name.replace('.ezerjs', '');
+    } catch (err) { showError("Error: Invalid .ezerjs file"); }
+  };
+  reader.readAsText(file);
+  input.value = "";
+}
+
+window.addEventListener('load', applySettings);
+window.onclick = (e) => { if (e.target == modal) closeModal(); }
+</script>
+</body>
+</html>
