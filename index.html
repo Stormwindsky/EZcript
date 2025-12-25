@@ -133,10 +133,10 @@
 
         .modal-box h2 { margin-bottom: 20px; color: var(--primary); }
         .modal-box p { font-size: 14px; line-height: 1.6; margin-bottom: 15px; color: var(--text-dim); text-align: left; }
-        .setting-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
-        label { font-size: 12px; color: var(--primary); font-weight: bold; text-transform: uppercase; }
+        .modal-box a { color: var(--primary); text-decoration: none; font-weight: bold; }
         
         select {
+            margin: 20px 0;
             padding: 10px;
             width: 100%;
             background: var(--bg);
@@ -174,24 +174,11 @@
         <div class="modal-box">
             <button class="close-x" onclick="closeModal('modal-settings')">&times;</button>
             <h2 id="modal-h-settings">Settings</h2>
-            
-            <div class="setting-row">
-                <label id="lbl-lang">Language</label>
-                <select id="lang" onchange="updateLang(this.value)">
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
-                </select>
-            </div>
-
-            <div class="setting-row">
-                <label id="lbl-render">Block Style (Renderer)</label>
-                <select id="renderSelect" onchange="updateRenderer(this.value)">
-                    <option value="thrasos">Scratch 3.0 (Thrasos)</option>
-                    <option value="geras">Classic Blockly (Geras)</option>
-                </select>
-            </div>
-
-            <button class="btn" style="width:100%; margin-top: 10px;" onclick="closeModal('modal-settings')">Close</button>
+            <select id="lang" onchange="updateLang(this.value)">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select>
+            <button class="btn" style="width:100%" onclick="closeModal('modal-settings')">Close</button>
         </div>
     </div>
 
@@ -208,9 +195,12 @@
         const owner = "stormwindsky";
         const repo = "EZcript";
         const basePath = "Lists";
+        
+        // CONFIGURATION DES TEMPLATES
         const templateRepo = "Template-EZcript-Projects";
         const templatePath = "templates projects";
         
+        // MAPPING DES EXTENSIONS : Facile à configurer
         const extensionMap = {
             ".ezpy": "EZpy/EZpy.html",
             ".ezhtml": "EZHTML/EZHTML.html",
@@ -223,8 +213,6 @@
                 title: "Available Services", 
                 templates: "Available Templates",
                 settings: "Settings", 
-                lblLang: "Language",
-                lblRender: "Block Style",
                 load: "SCANNING API...", 
                 close: "Close",
                 credits: "Notes & Credits",
@@ -236,8 +224,6 @@
                 title: "Services Disponibles", 
                 templates: "Modèles Disponibles",
                 settings: "Paramètres", 
-                lblLang: "Langue",
-                lblRender: "Style des Blocs",
                 load: "RECHERCHE API...", 
                 close: "Fermer",
                 credits: "Notes & Crédits",
@@ -250,11 +236,9 @@
         function applyGlobalSettings() {
             const theme = localStorage.getItem('ez_theme') || 'dark';
             const lang = localStorage.getItem('ez_lang') || 'en';
-            const render = localStorage.getItem('ez_render') || 'thrasos';
 
             document.documentElement.setAttribute('data-theme', theme);
             document.getElementById('theme-btn').innerText = theme === 'dark' ? "🌙" : "☀️";
-            document.getElementById('renderSelect').value = render;
             
             const d = langData[lang];
             document.getElementById('main-title').innerText = d.title;
@@ -264,8 +248,6 @@
             document.getElementById('btn-credits').innerText = d.credits;
             document.getElementById('modal-h-credits').innerText = d.credits;
             document.getElementById('lang').value = lang;
-            document.getElementById('lbl-lang').innerText = d.lblLang;
-            document.getElementById('lbl-render').innerText = d.lblRender;
 
             document.getElementById('credits-content').innerHTML = `
                 <p>${d.desc}</p>
@@ -279,7 +261,8 @@
         }
 
         function toggleTheme() {
-            const next = (localStorage.getItem('ez_theme') || 'dark') === 'dark' ? 'light' : 'dark';
+            const current = localStorage.getItem('ez_theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
             localStorage.setItem('ez_theme', next);
             applyGlobalSettings();
         }
@@ -289,13 +272,10 @@
             applyGlobalSettings();
         }
 
-        function updateRenderer(r) {
-            localStorage.setItem('ez_render', r);
-        }
-
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
+        // SCAN DES SERVICES (Inchangé)
         async function scanFiles() {
             const grid = document.getElementById('grid');
             const loader = document.getElementById('loader');
@@ -319,6 +299,7 @@
             }
         }
 
+        // SCAN DES TEMPLATES (Nouveau)
         async function scanTemplates() {
             const grid = document.getElementById('grid-templates');
             const loader = document.getElementById('loader-templates');
@@ -327,17 +308,21 @@
                 const files = await res.json();
                 
                 files.forEach(file => {
+                    // On vérifie si l'extension est dans notre extensionMap
                     const ext = Object.keys(extensionMap).find(e => file.name.endsWith(e));
+                    
                     if (ext) {
                         const name = file.name.replace(ext, '');
                         const rawUrl = `https://raw.githubusercontent.com/${owner}/${templateRepo}/main/${encodeURIComponent(templatePath)}/${file.name}`;
                         const editorPath = extensionMap[ext];
                         const finalHref = `https://${owner}.github.io/${repo}/Lists/${editorPath}?=${rawUrl}`;
+                        
                         createTemplateCard(name, ext.replace('.','').toUpperCase(), finalHref);
                     }
                 });
                 loader.style.display = 'none';
             } catch (e) {
+                console.error(e);
                 loader.innerText = "No templates found or API limit reached.";
             }
         }
@@ -347,7 +332,11 @@
             const card = document.createElement('a');
             card.className = 'item-card';
             card.href = `https://${owner}.github.io/${repo}/${basePath}/${folder}/${fullName}`;
-            card.innerHTML = `<span>Service / ${folder}</span><h3>${name}</h3><p style="color:var(--primary); font-size:13px; font-weight:bold;">Launch Module →</p>`;
+            card.innerHTML = `
+                <span>Service / ${folder}</span>
+                <h3>${name}</h3>
+                <p style="color:var(--primary); font-size:13px; font-weight:bold;">Launch Module →</p>
+            `;
             grid.appendChild(card);
         }
 
@@ -356,7 +345,11 @@
             const card = document.createElement('a');
             card.className = 'item-card';
             card.href = url;
-            card.innerHTML = `<span>Template / ${type}</span><h3>${name}</h3><p style="color:var(--accent); font-size:13px; font-weight:bold;">Use Template →</p>`;
+            card.innerHTML = `
+                <span>Template / ${type}</span>
+                <h3>${name}</h3>
+                <p style="color:var(--accent); font-size:13px; font-weight:bold;">Use Template →</p>
+            `;
             grid.appendChild(card);
         }
 
